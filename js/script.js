@@ -1,0 +1,201 @@
+const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:5000/api'
+    : 'https://school-website-backend-j6pc.onrender.com/api';
+
+// Success Animation Function
+function showSuccessAnimation(message = 'Success!') {
+    // Create success modal
+    const modal = document.createElement('div');
+    modal.className = 'success-animation active';
+    modal.innerHTML = `
+        <div class="success-card">
+            <div class="success-icon"></div>
+            <h3>${message}</h3>
+            <p>Thank you for your submission!</p>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Create confetti
+    createConfetti();
+    
+    // Click to dismiss
+    modal.addEventListener('click', () => {
+        modal.style.opacity = '0';
+        setTimeout(() => modal.remove(), 300);
+    });
+    
+    // Auto dismiss after 3 seconds
+    setTimeout(() => {
+        modal.style.opacity = '0';
+        setTimeout(() => modal.remove(), 300);
+    }, 3000);
+}
+
+function createConfetti() {
+    const colors = ['#2563eb', '#7c3aed', '#fbbf24', '#10b981', '#ef4444', '#ec4899'];
+    
+    for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.top = '-10px';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 0.5 + 's';
+        confetti.style.animationDuration = (Math.random() * 1 + 2) + 's';
+        confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+        
+        if (Math.random() > 0.5) {
+            confetti.style.borderRadius = '50%';
+        }
+        
+        document.body.appendChild(confetti);
+        
+        setTimeout(() => confetti.remove(), 3500);
+    }
+}
+
+
+
+
+// Mobile Menu Toggle
+const hamburger = document.getElementById('hamburger');
+const navMenu = document.getElementById('navMenu');
+if (hamburger) {
+    hamburger.addEventListener('click', () => {
+        navMenu.classList.toggle('active');
+    });
+}
+
+// Counter Animation
+const counters = document.querySelectorAll('.counter');
+const animateCounter = (counter) => {
+    const target = +counter.getAttribute('data-target');
+    const increment = target / 100;
+    let current = 0;
+    const update = () => {
+        current += increment;
+        if (current < target) {
+            counter.innerText = Math.ceil(current);
+            setTimeout(update, 20);
+        } else {
+            counter.innerText = target;
+        }
+    };
+    update();
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            animateCounter(entry.target);
+            observer.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.5 });
+
+counters.forEach(counter => observer.observe(counter));
+
+// Admission Form - Now connects to backend!
+const admissionForm = document.getElementById('admissionForm');
+if (admissionForm) {
+    admissionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(admissionForm);
+        const data = Object.fromEntries(formData);
+        const msg = document.getElementById('formMessage');
+        
+        // Show loading
+        const submitBtn = admissionForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        try {
+            const response = await fetch(`${API_URL}/applications`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                msg.className = 'form-message success';
+                msg.style.display = 'block';
+                msg.textContent = '✅ Application submitted successfully! We will contact you soon.';
+                admissionForm.reset();
+            } else {
+                msg.className = 'form-message error';
+                msg.style.display = 'block';
+                msg.textContent = '❌ ' + (result.message || 'Submission failed');
+            }
+        } catch (error) {
+            msg.className = 'form-message error';
+            msg.style.display = 'block';
+            msg.textContent = '❌ Server error. Please ensure backend is running.';
+            console.error(error);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+        
+        setTimeout(() => msg.style.display = 'none', 5000);
+    });
+}
+
+// Contact Form - Now connects to backend!
+const contactForm = document.getElementById('contactForm');
+if (contactForm) {
+    contactForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(contactForm);
+        const data = Object.fromEntries(formData);
+        const msg = document.getElementById('contactMessage');
+        
+        const submitBtn = contactForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+
+        try {
+            const response = await fetch(`${API_URL}/contacts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                msg.className = 'form-message success';
+                msg.style.display = 'block';
+                msg.textContent = '✅ Message sent successfully! We will reply soon.';
+                contactForm.reset();
+            } else {
+                msg.className = 'form-message error';
+                msg.style.display = 'block';
+                msg.textContent = '❌ ' + (result.message || 'Failed to send');
+            }
+        } catch (error) {
+            msg.className = 'form-message error';
+            msg.style.display = 'block';
+            msg.textContent = '❌ Server error. Please ensure backend is running.';
+            console.error(error);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+        
+        setTimeout(() => msg.style.display = 'none', 5000);
+    });
+}
+
+// Smooth scroll
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+    });
+});

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact - Amar Jyoti School</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+    <a href="index.html" style="text-decoration:none;display:flex;align-items:center;gap:0.5rem">
+        <div class="logo-icon">🎓</div>
+        <div>
+            <h2 style="margin:0">AMAR JYOTI</h2>
+            <small style="color:#6b7280;font-size:0.75rem">SCHOOL</small>
+        </div>
+    </a>
+</div>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="academics.html">Academics</a></li>
+                <li><a href="gallery.html">Gallery</a></li>
+                <li><a href="admissions.html">Admissions</a></li>
+                <li><a href="contact.html" class="active">Contact</a></li>
+                
+            </ul>
+            <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+        </div>
+    </nav>
+
+    <section class="page-header">
+        <h1>Contact Us</h1>
+        <p>We'd love to hear from you</p>
+    </section>
+
+    <section class="contact-content">
+        <div class="contact-grid">
+            <div class="contact-info">
+                <h2>Get in Touch</h2>
+                <div class="info-item">
+                    <span class="info-icon">📍</span>
+                    <div>
+                        <h4>Address</h4>
+                        <p>Ajs School, Near Vodafone Tower,<br>Gopalgarh, Teh Pahari, Dist Deeg, Rajasthan, 321204</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">📞</span>
+                    <div>
+                        <h4>Phone</h4>
+                        <p>+91 9828603638, 9828142526, 7877443404</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">✉️</span>
+                    <div>
+                        <h4>Email</h4>
+                        <p>Ajs@gmail.com</p>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <span class="info-icon">🕐</span>
+                    <div>
+                        <h4>Office Hours</h4>
+                        <p>Mon-Fri: 8:00 AM - 5:00 PM<br>Sat: 9:00 AM - 1:00 PM</p>
+                    </div>
+                </div>
+            </div>
+
+            <form class="contact-form" id="contactForm">
+                <h2>Send a Message</h2>
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label>Subject *</label>
+                    <input type="text" name="subject" required>
+                </div>
+                <div class="form-group">
+                    <label>Message *</label>
+                    <textarea name="message" rows="5" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Send Message</button>
+            </form>
+        </div>
+        <div id="contactMessage" class="form-message"></div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-bottom">
+            <p>&copy; 2026 Amar Jyoti School. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+</body>
+</html>

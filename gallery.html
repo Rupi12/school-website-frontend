@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery - Amar Jyoti School</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <a href="index.html" style="text-decoration:none;display:flex;align-items:center;gap:0.5rem">
+                    <div class="logo-icon">🎓</div>
+                    <div>
+                        <h2 style="margin:0">Bright Future</h2>
+                        <small style="color:#6b7280;font-size:0.75rem">ACADEMY</small>
+                    </div>
+                </a>
+            </div>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="academics.html">Academics</a></li>
+                <li><a href="gallery.html" class="active">Gallery</a></li>
+                <li><a href="admissions.html">Admissions</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+            <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+        </div>
+    </nav>
+
+    <section class="page-header">
+        <h1>📸 Photo Gallery</h1>
+        <p>Capturing moments, creating memories</p>
+    </section>
+
+    <section class="gallery-section">
+        <!-- Filter Buttons -->
+        <div class="gallery-filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="Events">🎉 Events</button>
+            <button class="filter-btn" data-filter="Sports">⚽ Sports</button>
+            <button class="filter-btn" data-filter="Campus">🏫 Campus</button>
+            <button class="filter-btn" data-filter="Academics">📚 Academics</button>
+            <button class="filter-btn" data-filter="Cultural">🎭 Cultural</button>
+            <button class="filter-btn" data-filter="Others">✨ Others</button>
+        </div>
+
+        <!-- Loading state -->
+        <div id="galleryLoading" class="gallery-loading">
+            <div class="spinner spinner-dark"></div>
+            <p>Loading gallery...</p>
+        </div>
+
+        <!-- Gallery Grid -->
+        <div class="gallery-grid" id="galleryGrid"></div>
+
+        <!-- Empty state -->
+        <div id="galleryEmpty" class="gallery-empty hidden">
+            <div class="empty-icon">📷</div>
+            <h3>No photos yet</h3>
+            <p>Check back soon for amazing moments!</p>
+        </div>
+    </section>
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close" onclick="closeLightbox()">×</span>
+        <button class="lightbox-nav prev" onclick="changeImage(-1)">‹</button>
+        <div class="lightbox-content">
+            <img id="lightboxImg" src="" alt="">
+            <div class="lightbox-info">
+                <h3 id="lightboxTitle"></h3>
+                <span id="lightboxCategory" class="lightbox-category"></span>
+                <p id="lightboxDesc"></p>
+            </div>
+        </div>
+        <button class="lightbox-nav next" onclick="changeImage(1)">›</button>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-bottom">
+            <p>&copy; 2026 Amar Jyoti School. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/gallery.js"></script>
+</body>
+</html>
