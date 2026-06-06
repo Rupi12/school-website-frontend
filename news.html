@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News & Events - Amar Jyoti School</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <a href="index.html" style="text-decoration:none;display:flex;align-items:center;gap:0.5rem">
+                    <div class="logo-icon">🎓</div>
+                    <div>
+                        <h2 style="margin:0">Amar Jyoti School</h2>
+                        <small style="color:#6b7280;font-size:0.75rem">School</small>
+                    </div>
+                </a>
+            </div>
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="academics.html">Academics</a></li>
+                <li><a href="admissions.html">Admissions</a></li>
+                <li><a href="gallery.html">Gallery</a></li>
+                <li><a href="news.html" class="active">News</a></li>
+                <li><a href="documents.html">Documents</a></li>
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+            <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+        </div>
+    </nav>
+
+    <section class="page-header">
+        <h1>📰 News & Events</h1>
+        <p>Stay updated with the latest happenings</p>
+    </section>
+
+    <section class="news-section">
+        <div class="news-filters">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="News">📰 News</button>
+            <button class="filter-btn" data-filter="Events">🎉 Events</button>
+            <button class="filter-btn" data-filter="Achievements">🏆 Achievements</button>
+            <button class="filter-btn" data-filter="Announcements">📢 Announcements</button>
+        </div>
+
+        <div id="newsLoading" class="gallery-loading">
+            <div class="spinner spinner-dark"></div>
+            <p>Loading news...</p>
+        </div>
+
+        <div class="news-list" id="newsList"></div>
+
+        <div id="newsEmpty" class="gallery-empty hidden">
+            <div class="empty-icon">📰</div>
+            <h3>No news yet</h3>
+            <p>Check back soon for updates!</p>
+        </div>
+    </section>
+
+    <div id="newsModal" class="lightbox">
+        <span class="lightbox-close" onclick="closeNewsModal()">×</span>
+        <div class="news-modal-content">
+            <img id="modalImg" src="" alt="" style="display:none">
+            <div class="news-modal-body">
+                <span id="modalCategory" class="news-category-badge"></span>
+                <h2 id="modalTitle"></h2>
+                <div id="modalDate" class="news-modal-date"></div>
+                <p id="modalDesc"></p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-bottom">
+            <p>&copy; 2026 Amar Jyoti School. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/news.js"></script>
+</body>
+</html>

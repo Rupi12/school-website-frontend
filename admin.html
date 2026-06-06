@@ -263,6 +263,11 @@
     <button class="tab-btn active" onclick="showTab('applications', this)">📝 Applications</button>
     <button class="tab-btn" onclick="showTab('messages', this)">💬 Messages</button>
     <button class="tab-btn" onclick="showTab('gallery', this)">📸 Gallery</button>
+    <button class="tab-btn" onclick="showTab('news', this)">📰 News</button>
+    <button class="tab-btn" onclick="showTab('documents', this)">📄 Documents</button>
+    <button onclick="exportApplications()" class="btn btn-primary" style="margin-bottom:1rem">
+    📥 Export to Excel (CSV)
+</button>
 </div>
 
 <div class="search-bar">
@@ -316,6 +321,8 @@
                 </table>
             </div>
         </div>
+        
+        
         <div id="gallery-tab" class="hidden">
     <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
         <h3 style="margin-top:0;color:#2563eb">➕ Add New Photo</h3>
@@ -358,7 +365,85 @@
 </div>
     </div>
 
-    <!-- Modal for viewing details -->
+
+
+<div id="news-tab" class="hidden">
+    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+        <h3 style="margin-top:0;color:#2563eb">➕ Add News/Event</h3>
+        <form id="newsForm" style="display:grid;gap:1rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div>
+                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Title *</label>
+                    <input type="text" name="title" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Category *</label>
+                    <select name="category" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <option value="News">News</option>
+                        <option value="Events">Events</option>
+                        <option value="Achievements">Achievements</option>
+                        <option value="Announcements">Announcements</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div>
+                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Event Date (optional)</label>
+                    <input type="date" name="eventDate" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-top:1.8rem">
+                    <input type="checkbox" name="isPinned" id="isPinned" style="width:18px;height:18px">
+                    <label for="isPinned" style="font-weight:600">📌 Pin to top</label>
+                </div>
+            </div>
+            <div>
+                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Description *</label>
+                <textarea name="description" rows="4" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"></textarea>
+            </div>
+            <div>
+                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Image (optional)</label>
+                <input type="file" name="image" id="newsImageInput" accept="image/*" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
+            </div>
+            <button type="submit" class="btn btn-primary" style="justify-self:start">Add News</button>
+        </form>
+        <div id="newsMsg" style="margin-top:1rem"></div>
+    </div>
+    <div id="adminNewsList" style="display:grid;gap:1rem"></div>
+</div>
+
+
+<div id="documents-tab" class="hidden">
+    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+        <h3 style="margin-top:0;color:#2563eb">➕ Upload Document</h3>
+        <form id="docForm" style="display:grid;gap:1rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div>
+                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Title *</label>
+                    <input type="text" name="title" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                </div>
+                <div>
+                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Category *</label>
+                    <select name="category" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <option value="Results">Results</option>
+                        <option value="Notices">Notices</option>
+                        <option value="Forms">Forms</option>
+                        <option value="Circulars">Circulars</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label style="display:block;margin-bottom:0.5rem;font-weight:600">File (PDF/DOC/XLS, max 10MB) *</label>
+                <input type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
+            </div>
+            <button type="submit" class="btn btn-primary" style="justify-self:start">Upload Document</button>
+        </form>
+        <div id="docMsg" style="margin-top:1rem"></div>
+    </div>
+    <div id="adminDocList" style="display:grid;gap:1rem"></div>
+</div>
+
+<!-- Modal for viewing details -->
     <div id="detailModal" class="modal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal()">×</button>

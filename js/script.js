@@ -199,3 +199,63 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         if (target) target.scrollIntoView({ behavior: 'smooth' });
     });
 });
+
+// ============ HOMEPAGE NEWS ============
+async function loadHomeNews() {
+    const grid = document.getElementById('homeNewsGrid');
+    if (!grid) return;
+    try {
+        const res = await fetch(`${API_URL}/news/latest`);
+        const data = await res.json();
+        if (data.success && data.news.length > 0) {
+            const icons = { 'News': '📰', 'Events': '🎉', 'Achievements': '🏆', 'Announcements': '📢' };
+            grid.innerHTML = data.news.map(item => `
+                <div class="news-card" onclick="window.location.href='news.html'">
+                    ${item.imageUrl ? `<div class="news-card-image"><img src="${item.imageUrl}" alt="${item.title}" onerror="this.parentElement.style.display='none'"></div>` : ''}
+                    <div class="news-card-content">
+                        <span class="news-category-badge cat-${item.category}">${icons[item.category]} ${item.category}</span>
+                        <h3>${escapeHtmlHome(item.title)}</h3>
+                        <div class="news-date">📅 ${new Date(item.createdAt).toLocaleDateString()}</div>
+                        <p>${escapeHtmlHome(item.description.substring(0, 100))}...</p>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            grid.innerHTML = '<p style="text-align:center;color:#6b7280">No news yet. Check back soon!</p>';
+        }
+    } catch (error) {
+        console.error('Error loading home news:', error);
+    }
+}
+
+async function loadAnnouncements() {
+    const banner = document.getElementById('announcementBanner');
+    if (!banner) return;
+    if (sessionStorage.getItem('bannerClosed')) return;
+    try {
+        const res = await fetch(`${API_URL}/news/announcements`);
+        const data = await res.json();
+        if (data.success && data.announcements.length > 0) {
+            const content = document.getElementById('announcementContent');
+            content.innerHTML = data.announcements.map(a => `<span>📢 ${escapeHtmlHome(a.title)}</span>`).join('');
+            banner.classList.add('active');
+        }
+    } catch (error) {
+        console.error('Error loading announcements:', error);
+    }
+}
+
+function closeBanner() {
+    document.getElementById('announcementBanner').classList.remove('active');
+    sessionStorage.setItem('bannerClosed', 'true');
+}
+
+function escapeHtmlHome(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+loadHomeNews();
+loadAnnouncements();
