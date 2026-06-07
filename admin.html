@@ -228,6 +228,8 @@
                 @keyframes spin {
                     to { transform: rotate(360deg); }
                 }
+                .sd-mini-btn { padding: 0.6rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: inherit; }
+.sd-mini-btn:hover { background: #2563eb; }
     </style>
 </head>
 <body>
@@ -265,6 +267,7 @@
     <button class="tab-btn" onclick="showTab('gallery', this)">📸 Gallery</button>
     <button class="tab-btn" onclick="showTab('news', this)">📰 News</button>
     <button class="tab-btn" onclick="showTab('documents', this)">📄 Documents</button>
+    <button class="tab-btn" onclick="showTab('students', this)">🎓 Students</button>
     <button onclick="exportApplications()" class="btn btn-primary" style="margin-bottom:1rem">
     📥 Export to Excel (CSV)
 </button>
@@ -409,6 +412,99 @@
         <div id="newsMsg" style="margin-top:1rem"></div>
     </div>
     <div id="adminNewsList" style="display:grid;gap:1rem"></div>
+</div>
+
+
+
+<div id="students-tab" class="hidden">
+
+    <!-- 1. Add Student -->
+    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+        <h3 style="margin-top:0;color:#2563eb">➕ Add Student</h3>
+        <form id="studentForm" style="display:grid;gap:1rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <input type="text" name="name" placeholder="Name *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                <input type="text" name="rollNumber" placeholder="Roll Number *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+                <input type="text" name="class" placeholder="Class *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                <input type="text" name="section" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <input type="text" name="parentName" placeholder="Parent Name" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                <input type="text" name="phone" placeholder="Phone" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            </div>
+            <button type="submit" class="btn btn-primary" style="justify-self:start">Add Student</button>
+        </form>
+        <div id="studentMsg" style="margin-top:1rem"></div>
+    </div>
+
+    <!-- 2. Manage Student Data -->
+    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+        <h3 style="margin-top:0;color:#2563eb">⚙️ Manage Student Data</h3>
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
+            <select id="manageClass" onchange="loadClassStudents()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                <option value="">Select Class...</option>
+            </select>
+            <input type="text" id="studentSearch" onkeyup="filterStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px" disabled>
+        </div>
+        <select id="selectStudent" size="6" onchange="onStudentSelect()" style="width:100%;padding:0.5rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:1rem;display:none"></select>
+
+        <div id="manageActions" style="display:none;gap:0.5rem;flex-wrap:wrap">
+            <button class="sd-mini-btn" onclick="showManage('result')">📊 Add Result</button>
+            <button class="sd-mini-btn" onclick="showManage('fee')">💰 Add Fee</button>
+            <button class="sd-mini-btn" onclick="showManage('doc')">📄 Upload Doc</button>
+            <button class="sd-mini-btn" onclick="showManage('view')">👁️ View/Delete Data</button>
+        </div>
+        <div id="manageForms" style="margin-top:1rem"></div>
+    </div>
+
+    <!-- 3. Bulk Attendance -->
+    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+        <h3 style="margin-top:0;color:#2563eb">📅 Bulk Attendance (by Class)</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+            <select id="bulkClass" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                <option value="">Select Class...</option>
+            </select>
+            <input type="date" id="bulkDate" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+        </div>
+        <button class="btn btn-primary" onclick="loadBulkAttendance()">Load Students</button>
+        <div id="bulkList" style="margin-top:1rem"></div>
+        <div id="bulkMsg" style="margin-top:1rem"></div>
+    </div>
+
+    <!-- 4. Timetable -->
+    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+        <h3 style="margin-top:0;color:#2563eb">🗓️ Set Timetable (by Class)</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+            <input type="text" id="ttClass" placeholder="Class *" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            <input type="text" id="ttSection" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+        </div>
+        <select id="ttDay" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem">
+            <option value="">Select Day...</option>
+            <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+            <option>Thursday</option><option>Friday</option><option>Saturday</option>
+        </select>
+        <div id="periodRows"></div>
+        <button class="sd-mini-btn" onclick="addPeriodRow()" style="margin:0.5rem 0">+ Add Period</button><br>
+        <button class="sd-mini-btn" onclick="addDayToTimetable()" style="background:#10b981">✓ Add This Day</button>
+        <div id="ttPreview" style="margin-top:1rem"></div>
+        <button onclick="saveTimetable()" class="btn btn-primary" style="margin-top:1rem">Save Full Timetable</button>
+        <div id="ttMsg" style="margin-top:1rem"></div>
+    </div>
+
+    <!-- 5. Student List -->
+    <h3 style="color:#2563eb">All Students</h3>
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
+    <select id="listClassFilter" onchange="renderStudentList()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+        <option value="">All Classes</option>
+    </select>
+    <input type="text" id="listSearch" onkeyup="renderStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+</div>
+<div id="adminStudentList" style="display:grid;gap:1rem"></div>
+<div id="listPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
+
 </div>
 
 

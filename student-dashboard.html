@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f3f4f6; margin: 0; font-family: 'Poppins', sans-serif; }
+        .sd-container { max-width: 1100px; margin: auto; padding: 2rem; }
+        .sd-header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 1.5rem 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+        .sd-header h1 { margin: 0; color: #2563eb; font-size: 1.4rem; }
+        .logout-btn { padding: 0.5rem 1.5rem; background: #ef4444; color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: 600; }
+        .sd-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .sd-tab { padding: 0.7rem 1.3rem; border: none; background: white; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: inherit; }
+        .sd-tab.active { background: #2563eb; color: white; }
+        .sd-panel { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .sd-panel.hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #2563eb; color: white; padding: 0.8rem; text-align: left; }
+        td { padding: 0.8rem; border-bottom: 1px solid #eee; }
+        .badge { padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .paid { background: #d1fae5; color: #065f46; }
+        .pending { background: #fee2e2; color: #991b1b; }
+        .present { background: #d1fae5; color: #065f46; }
+        .absent { background: #fee2e2; color: #991b1b; }
+        .stat-big { font-size: 2.5rem; color: #2563eb; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="sd-container">
+        <div class="sd-header">
+            <div>
+                <h1>🎓 Student Dashboard</h1>
+                <div id="studentInfo" style="color:#6b7280;margin-top:0.3rem"></div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+
+        <div class="sd-tabs">
+            <button class="sd-tab active" onclick="showPanel('results', this)">📊 Results</button>
+            <button class="sd-tab" onclick="showPanel('attendance', this)">📅 Attendance</button>
+            <button class="sd-tab" onclick="showPanel('timetable', this)">🗓️ Timetable</button>
+            <button class="sd-tab" onclick="showPanel('fees', this)">💰 Fees</button>
+            <button class="sd-tab" onclick="showPanel('documents', this)">📄 Documents</button>
+        </div>
+
+        <div id="results-panel" class="sd-panel"></div>
+        <div id="attendance-panel" class="sd-panel hidden"></div>
+        <div id="timetable-panel" class="sd-panel hidden"></div>
+        <div id="fees-panel" class="sd-panel hidden"></div>
+        <div id="documents-panel" class="sd-panel hidden"></div>
+    </div>
+
+    <script src="js/student-dashboard.js"></script>
+</body>
+</html>

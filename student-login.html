@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login - Amar Jyoti School</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; font-family: 'Poppins', sans-serif; }
+        .login-container { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); padding: 1rem; }
+        .login-box { background: white; padding: 3rem; border-radius: 15px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); width: 100%; max-width: 400px; }
+        .login-box h2 { text-align: center; margin-bottom: 0.5rem; color: #2563eb; }
+        .login-box p { text-align: center; color: #6b7280; margin-bottom: 2rem; }
+        .login-box .form-group { margin-bottom: 1.2rem; }
+        .login-box label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+        .login-box input { width: 100%; padding: 0.8rem; border: 1px solid #d1d5db; border-radius: 5px; font-size: 1rem; box-sizing: border-box; }
+        .login-box button { width: 100%; padding: 0.8rem; background: #2563eb; color: white; border: none; border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .form-message { margin-top: 1rem; padding: 0.8rem; border-radius: 5px; text-align: center; display: none; }
+        .form-message.error { display: block; background: #fee2e2; color: #991b1b; }
+        .back-link { text-align: center; margin-top: 1rem; }
+        .back-link a { color: #2563eb; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <h2>🎓 Student Login</h2>
+            <p>Amar Jyoti School</p>
+            <form id="studentLoginForm">
+                <div class="form-group">
+                    <label>Roll Number</label>
+                    <input type="text" name="rollNumber" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                <button type="submit">Login</button>
+            </form>
+            <div id="loginMessage" class="form-message"></div>
+            <div class="back-link"><a href="index.html">← Back to Website</a></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:5000/api'
+            : 'https://school-website-backend-j6pc.onrender.com/api';
+
+        if (localStorage.getItem('studentToken')) window.location.href = 'student-dashboard.html';
+
+        document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(e.target));
+            const msg = document.getElementById('loginMessage');
+            try {
+                const res = await fetch(`${API_URL}/student/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    localStorage.setItem('studentToken', result.token);
+                    localStorage.setItem('studentInfo', JSON.stringify(result.student));
+                    window.location.href = 'student-dashboard.html';
+                } else {
+                    msg.className = 'form-message error';
+                    msg.textContent = '❌ ' + result.message;
+                }
+            } catch (error) {
+                msg.className = 'form-message error';
+                msg.textContent = '❌ Server error';
+            }
+        });
+    </script>
+</body>
+</html>
