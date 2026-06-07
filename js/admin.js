@@ -257,11 +257,13 @@ function showTab(tab, btn) {
     document.getElementById('news-tab').classList.toggle('hidden', tab !== 'news');
     document.getElementById('documents-tab').classList.toggle('hidden', tab !== 'documents');
     document.getElementById('students-tab').classList.toggle('hidden', tab !== 'students');
+    document.getElementById('admins-tab').classList.toggle('hidden', tab !== 'admins');
 
     if (tab === 'students') { loadStudentsAdmin(); loadClasses(); loadBulkClasses(); }
     if (tab === 'documents') loadDocsAdmin();
     if (tab === 'gallery') loadGalleryAdmin();
     if (tab === 'news') loadNewsAdmin();
+    if (tab === 'admins') loadAdmins();
 
     const searchBar = document.querySelector('.search-bar');
     if (searchBar) {
@@ -1010,3 +1012,144 @@ async function submitBulkAttendance(date) {
     }
     setTimeout(() => msg.innerHTML = '', 4000);
 }
+
+
+// ============ PERMISSIONS ============
+const ALL_PERMISSIONS = [
+    { key: 'applications', label: '📝 Applications' },
+    { key: 'messages', label: '💬 Messages' },
+    { key: 'gallery', label: '📸 Gallery' },
+    { key: 'news', label: '📰 News' },
+    { key: 'documents', label: '📄 Documents' },
+    { key: 'students.list', label: '🎓 Student List' },
+    { key: 'students.manage', label: '⚙️ Manage Student Data' },
+    { key: 'students.bulk', label: '📅 Bulk Attendance' },
+    { key: 'students.timetable', label: '🗓️ Timetable' }
+];
+
+const myRole = adminInfo.role || 'admin';
+const myPermissions = adminInfo.permissions || [];
+
+function hasPermission(perm) {
+    if (myRole === 'superadmin') return true;
+    return myPermissions.includes(perm);
+}
+
+function applyTabPermissions() {
+    const tabMap = {
+        'applications': 'applications',
+        'messages': 'messages',
+        'gallery': 'gallery',
+        'news': 'news',
+        'documents': 'documents',
+        'students': ['students.list','students.manage','students.bulk','students.timetable']
+    };
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        const onclick = btn.getAttribute('onclick') || '';
+        const match = onclick.match(/showTab\('(\w+)'/);
+        if (!match) return;
+        const tab = match[1];
+
+        if (tab === 'admins') {
+            btn.style.display = myRole === 'superadmin' ? '' : 'none';
+            return;
+        }
+        const req = tabMap[tab];
+        if (!req) return;
+        const allowed = Array.isArray(req) ? req.some(p => hasPermission(p)) : hasPermission(req);
+        btn.style.display = allowed ? '' : 'none';
+    });
+
+    // Auto-open first visible tab
+    const firstVisible = [...document.querySelectorAll('.tab-btn')].find(b => b.style.display !== 'none');
+    if (firstVisible) firstVisible.click();
+}
+
+function applyStudentSectionPermissions() {
+    document.querySelectorAll('[data-perm]').forEach(el => {
+        const perm = el.getAttribute('data-perm');
+        el.style.display = hasPermission(perm) ? '' : 'none';
+    });
+}
+
+function applyStatsPermissions() {
+    const appStats = document.getElementById('totalApps')?.closest('.stat-card');
+    const pendStats = document.getElementById('pendingApps')?.closest('.stat-card');
+    const msgStats = document.getElementById('totalMsgs')?.closest('.stat-card');
+    const unreadStats = document.getElementById('unreadMsgs')?.closest('.stat-card');
+    if (appStats) appStats.style.display = hasPermission('applications') ? '' : 'none';
+    if (pendStats) pendStats.style.display = hasPermission('applications') ? '' : 'none';
+    if (msgStats) msgStats.style.display = hasPermission('messages') ? '' : 'none';
+    if (unreadStats) unreadStats.style.display = hasPermission('messages') ? '' : 'none';
+}
+
+
+
+async function loadAdmins() {
+    try {
+        const res = await fetch(`${API_URL}/auth/admins`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        const list = document.getElementById('adminsList');
+        list.innerHTML = data.admins.map(a => `
+            <div style="background:white;padding:1rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08)">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <h4 style="margin:0">${escapeHtml(a.username)} ${a.role==='superadmin'?'<span style="color:#fbbf24">★ Super</span>':''}</h4>
+                        <small style="color:#6b7280">${escapeHtml(a.email)}</small>
+                    </div>
+                    ${a.role !== 'superadmin' ? `<button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>` : ''}
+                </div>
+                ${a.role !== 'superadmin' ? `<div style="margin-top:0.5rem;font-size:0.85rem;color:#6b7280">Permissions: ${a.permissions.length ? a.permissions.join(', ') : 'None'}</div>` : ''}
+            </div>
+        `).join('');
+    } catch (e) { console.error(e); }
+}
+
+function renderPermCheckboxes() {
+    const el = document.getElementById('permCheckboxes');
+    if (!el) return;
+    el.innerHTML = ALL_PERMISSIONS.map(p => `
+        <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px">
+            <input type="checkbox" value="${p.key}" class="perm-cb"> ${p.label}
+        </label>
+    `).join('');
+}
+
+const adminForm = document.getElementById('adminForm');
+if (adminForm) {
+    adminForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const permissions = [...document.querySelectorAll('.perm-cb:checked')].map(cb => cb.value);
+        const data = Object.fromEntries(new FormData(adminForm));
+        data.permissions = permissions;
+        const msg = document.getElementById('adminMsg');
+        try {
+            const res = await fetch(`${API_URL}/auth/admins`, { method: 'POST', headers, body: JSON.stringify(data) });
+            const r = await res.json();
+            if (r.success) {
+                msg.innerHTML = '<div style="color:#065f46;background:#d1fae5;padding:0.8rem;border-radius:5px">✅ Sub-admin created!</div>';
+                adminForm.reset();
+                loadAdmins();
+            } else {
+                msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${r.message}</div>`;
+            }
+        } catch (err) {
+            msg.innerHTML = '<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ Failed</div>';
+        }
+        setTimeout(() => msg.innerHTML = '', 4000);
+    });
+}
+
+async function deleteAdmin(id) {
+    if (!confirm('Delete this sub-admin?')) return;
+    await fetch(`${API_URL}/auth/admins/${id}`, { method: 'DELETE', headers });
+    loadAdmins();
+}
+
+// Run on load
+renderPermCheckboxes();
+applyStudentSectionPermissions();
+applyStatsPermissions();
+applyTabPermissions();
