@@ -234,10 +234,20 @@
 </head>
 <body>
     <div class="admin-container">
-        <div class="admin-header">
-            <h1>📊 Admin Dashboard</h1>
+     <div class="admin-header">
+            <!-- Top Dashboard Logo & Title -->
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <img src="favicon.svg" alt="Amar Jyoti School Logo" style="height: 60px; width: 60px; object-fit: contain; flex-shrink: 0;">
+                <div style="display: flex; flex-direction: column; justify-content: center;">
+                    <h2 style="margin: 0; font-family: 'Poppins', sans-serif; font-size: 1.15rem; font-weight: 800; line-height: 1.1; color: #0f172a;">AMAR JYOTI SCHOOL</h2>
+                    <small style="color:#2563eb; font-weight: 600; margin-top: 3px;">Admin/Faculty Dashboard</small>
+                </div>
+            </div>
+            
+            <!-- Admin Info & Buttons (Kept Exactly The Same) -->
             <div class="admin-info">
                 <span id="adminName">👤 Admin</span>
+                <button id="changePwdBtn" onclick="openChangePassword()" style="display:none;margin-right:0.5rem;padding:0.4rem 0.8rem;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:0.85rem">🔑 Change Password</button>
                 <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -510,6 +520,8 @@
 </div> 
 
 
+
+
 <div id="admins-tab" class="hidden">
     <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
         <h3 style="margin-top:0;color:#2563eb">➕ Create Sub-Admin</h3>
@@ -571,6 +583,57 @@
         </div>
     </div>
 
-    <script src="js/admin.js"></script>
+
+
+
+
+    
+<!-- Modal for Editing Sub-Admin -->
+    <div id="editAdminModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeEditAdminModal()">×</button>
+            <h2 style="color:#2563eb;margin-top:0">⚙️ Edit Sub-Admin</h2>
+            
+            <form id="editAdminForm" style="display:grid;gap:1rem">
+                <input type="hidden" id="editAdminId">
+                
+                <div class="detail-row" style="margin-bottom:0">
+                    <strong>Username:</strong> <span id="editAdminUsername" style="color:#4b5563"></span>
+                </div>
+                
+                <div style="background:#f9fafb; padding:1rem; border-radius:8px; border: 1px solid #e5e7eb;">
+                    <label style="font-weight:600;display:block;margin-bottom:0.5rem;color:#1f2937">🔑 Reset Password (Optional)</label>
+                    <small style="color:#6b7280; display:block; margin-bottom:0.5rem;">Leave blank to keep the current password.</small>
+                    <input type="text" id="editAdminPassword" placeholder="Enter new password..." style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                </div>
+
+                <div>
+                    <label style="font-weight:600;display:block;margin-bottom:0.5rem;color:#1f2937">🛡️ Update Permissions:</label>
+                    <div id="editPermCheckboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem"></div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary" style="justify-self:start; margin-top:0.5rem;">Save All Changes</button>
+                <div id="editAdminMsg" style="margin-top:0.5rem"></div>
+            </form>
+        </div>
+    </div>
+    
+
+
+<div id="pwdModal" class="lightbox">
+    <div style="background:white;padding:2rem;border-radius:12px;max-width:400px;width:90%">
+        <h3 style="color:#2563eb;margin-top:0">🔑 Change Password</h3>
+        <input type="password" id="currentPwd" placeholder="Current Password" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;box-sizing:border-box">
+        <input type="password" id="newPwd" placeholder="New Password (min 6 chars)" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;box-sizing:border-box">
+        <input type="password" id="confirmPwd" placeholder="Confirm New Password" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:1rem;box-sizing:border-box">
+        <div style="display:flex;gap:0.5rem">
+            <button onclick="submitChangePassword()" class="btn btn-primary">Update</button>
+            <button onclick="closeChangePassword()" class="btn" style="background:#6b7280;color:white">Cancel</button>
+        </div>
+        <div id="pwdMsg" style="margin-top:1rem"></div>
+    </div>
+</div>
+
+<script src="js/admin.js"></script>
 </body>
 </html>

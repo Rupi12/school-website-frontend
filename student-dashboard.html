@@ -32,12 +32,19 @@
 <body>
     <div class="sd-container">
         <div class="sd-header">
-            <div>
-                <h1>🎓 Student Dashboard</h1>
-                <div id="studentInfo" style="color:#6b7280;margin-top:0.3rem"></div>
-            </div>
-            <button class="logout-btn" onclick="logout()">Logout</button>
+    <!-- Logo & Student Info -->
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <img src="favicon.svg" alt="Logo" style="height: 60px; width: 60px; object-fit: contain; flex-shrink: 0;">
+        <div style="display: flex; flex-direction: column; justify-content: center;">
+            <h2 style="margin: 0; font-family: 'Poppins', sans-serif; font-size: 1.15rem; font-weight: 800; color: #0f172a;">AMAR JYOTI SCHOOL</h2>
+            <small style="color:#2563eb; font-weight: 600;">Student Dashboard</small>
+            <div id="studentInfo" style="color:#6b7280; font-size: 0.85rem;"></div>
         </div>
+    </div>
+
+    <!-- Logout Button Only -->
+    <button class="logout-btn" onclick="logout()">Logout</button>
+</div>
 
         <div class="sd-tabs">
             <button class="sd-tab active" onclick="showPanel('results', this)">📊 Results</button>

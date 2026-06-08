@@ -9,30 +9,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
-            <div class="logo">
-    <a href="index.html" style="text-decoration:none;display:flex;align-items:center;gap:0.5rem">
-        <div class="logo-icon">🎓</div>
-        <div>
-            <h2 style="margin:0">AMAR JYOTI</h2>
-            <small style="color:#6b7280;font-size:0.75rem">SCHOOL</small>
-        </div>
-    </a>
-</div>
+            
+            <!-- Logo Section -->
+            <div class="logo" style="flex-shrink: 0; min-width: max-content; margin-right: auto; padding-right: 1.5rem;">
+                <a href="index.html" style="text-decoration:none; display:flex; align-items:center; gap:0.8rem;">
+                    <img src="favicon.svg" alt="Amar Jyoti School Logo" style="height: 70px; width: 70px; object-fit: contain; flex-shrink: 0;">
+                    
+                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                        <h2 style="margin:0; font-family: 'Poppins', sans-serif; font-size: 1.1rem; font-weight: 800; line-height: 1.1; white-space: nowrap;">AMAR JYOTI SCHOOL</h2>
+                        <small style="color:#6b7280; font-family: 'Poppins', sans-serif; font-size:0.65rem; font-weight: 600; white-space: nowrap; margin-top: 2px;">GOPALGARH, PAHARI (RAJ.)</small>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Menu Links -->
             <ul class="nav-menu" id="navMenu">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="about.html">About</a></li>
                 <li><a href="academics.html">Academics</a></li>
-                <li><a href="admissions.html" class="active">Admissions</a></li>
+                <li><a href="admissions.html">Admissions</a></li>
                 <li><a href="gallery.html">Gallery</a></li>
                 <li><a href="news.html">News</a></li>
-                
                 <li><a href="documents.html">Documents</a></li>
                 <li><a href="contact.html">Contact</a></li>
-                <li><a href="student-login.html">Student Login</a></li>
+                
+                <!-- Double-locked Student Login to prevent line breaking -->
+                <li style="white-space: nowrap; flex-shrink: 0;"><a href="student-login.html" style="white-space: nowrap;">Student Login</a></li>
             </ul>
-            <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+
+            <!-- Mobile Hamburger Button -->
+            <div class="hamburger" id="hamburger">
+                <span></span><span></span><span></span>
+            </div>
+            
         </div>
     </nav>
 

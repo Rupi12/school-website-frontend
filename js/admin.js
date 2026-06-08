@@ -1085,23 +1085,39 @@ function applyStatsPermissions() {
 }
 
 
-
+// Updated loadAdmins function to include the Edit button
 async function loadAdmins() {
     try {
         const res = await fetch(`${API_URL}/auth/admins`, { headers });
         const data = await res.json();
         if (!data.success) return;
         const list = document.getElementById('adminsList');
+        
         list.innerHTML = data.admins.map(a => `
-            <div style="background:white;padding:1rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08)">
+            <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:0.8rem;">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <div>
-                        <h4 style="margin:0">${escapeHtml(a.username)} ${a.role==='superadmin'?'<span style="color:#fbbf24">★ Super</span>':''}</h4>
+                        <h4 style="margin:0; font-size:1.1rem;">${escapeHtml(a.username)} ${a.role==='superadmin' ? '<span style="color:#fbbf24; font-size:0.8rem; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-left:5px;">★ Superadmin</span>' : ''}</h4>
                         <small style="color:#6b7280">${escapeHtml(a.email)}</small>
                     </div>
-                    ${a.role !== 'superadmin' ? `<button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>` : ''}
+                    ${a.role !== 'superadmin' ? `
+                        <div>
+                            <button class="action-btn btn-view" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit</button>
+                            <button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>
+                        </div>
+                    ` : ''}
                 </div>
-                ${a.role !== 'superadmin' ? `<div style="margin-top:0.5rem;font-size:0.85rem;color:#6b7280">Permissions: ${a.permissions.length ? a.permissions.join(', ') : 'None'}</div>` : ''}
+                ${a.role !== 'superadmin' ? `
+                    <div style="border-top: 1px solid #f3f4f6; padding-top:0.5rem;">
+                        <span style="font-size:0.85rem; color:#4b5563; font-weight:600;">Permissions:</span>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
+                            ${a.permissions.length 
+                                ? a.permissions.map(p => `<span class="news-category-badge cat-News" style="margin:0; font-size:0.75rem;">${p}</span>`).join('') 
+                                : '<span style="color:#9ca3af; font-size:0.85rem; font-style:italic;">No permissions assigned</span>'
+                            }
+                        </div>
+                    </div>
+                ` : ''}
             </div>
         `).join('');
     } catch (e) { console.error(e); }
@@ -1147,6 +1163,152 @@ async function deleteAdmin(id) {
     await fetch(`${API_URL}/auth/admins/${id}`, { method: 'DELETE', headers });
     loadAdmins();
 }
+
+
+// ---- EDIT SUB-ADMIN MODAL LOGIC ----
+
+function openEditAdminModal(admin) {
+    document.getElementById('editAdminId').value = admin._id;
+    document.getElementById('editAdminUsername').textContent = admin.username;
+    document.getElementById('editAdminPassword').value = ''; // Reset the password field
+    document.getElementById('editAdminMsg').innerHTML = '';
+    
+    // Generate checkboxes and check the ones the admin currently has
+    const el = document.getElementById('editPermCheckboxes');
+    el.innerHTML = ALL_PERMISSIONS.map(p => `
+        <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px;cursor:pointer;">
+            <input type="checkbox" value="${p.key}" class="edit-perm-cb" ${admin.permissions.includes(p.key) ? 'checked' : ''}> 
+            ${p.label}
+        </label>
+    `).join('');
+
+    document.getElementById('editAdminModal').classList.add('active');
+}
+
+function closeEditAdminModal() {
+    document.getElementById('editAdminModal').classList.remove('active');
+}
+
+const editAdminForm = document.getElementById('editAdminForm');
+if (editAdminForm) {
+    editAdminForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const adminId = document.getElementById('editAdminId').value;
+        const newPassword = document.getElementById('editAdminPassword').value.trim();
+        const permissions = [...document.querySelectorAll('.edit-perm-cb:checked')].map(cb => cb.value);
+        const msg = document.getElementById('editAdminMsg');
+        
+        const btn = editAdminForm.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        
+        try {
+            // 1. Update Permissions
+            const permRes = await fetch(`${API_URL}/auth/admins/${adminId}`, { 
+                method: 'PUT', 
+                headers, 
+                body: JSON.stringify({ permissions }) 
+            });
+            const permResult = await permRes.json();
+            
+            if (!permResult.success) {
+                throw new Error(permResult.message);
+            }
+
+            // 2. Update Password (only if field is not empty)
+            if (newPassword) {
+                const pwdRes = await fetch(`${API_URL}/auth/admins/${adminId}/reset-password`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({ newPassword })
+                });
+                const pwdResult = await pwdRes.json();
+                if (!pwdResult.success) {
+                    throw new Error(pwdResult.message);
+                }
+            }
+
+            msg.innerHTML = '<div style="color:#065f46;background:#d1fae5;padding:0.8rem;border-radius:5px">✅ Sub-admin updated successfully!</div>';
+            loadAdmins(); // Refresh the list behind the modal
+            
+            setTimeout(() => {
+                closeEditAdminModal();
+            }, 1500);
+
+        } catch (err) {
+            msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${err.message || 'Failed to update admin'}</div>`;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Save All Changes';
+        }
+    });
+}
+
+// Close modal when clicking outside of it
+document.getElementById('editAdminModal').addEventListener('click', (e) => {
+    if (e.target.id === 'editAdminModal') closeEditAdminModal();
+});
+
+
+// ============ CHANGE PASSWORD (superadmin) ============
+// Show button only for superadmin
+if (myRole === 'superadmin') {
+    const cpBtn = document.getElementById('changePwdBtn');
+    if (cpBtn) cpBtn.style.display = '';
+}
+
+function openChangePassword() {
+    document.getElementById('pwdModal').classList.add('active');
+}
+
+function closeChangePassword() {
+    document.getElementById('pwdModal').classList.remove('active');
+    document.getElementById('currentPwd').value = '';
+    document.getElementById('newPwd').value = '';
+    document.getElementById('confirmPwd').value = '';
+    document.getElementById('pwdMsg').innerHTML = '';
+}
+
+async function submitChangePassword() {
+    const currentPassword = document.getElementById('currentPwd').value;
+    const newPassword = document.getElementById('newPwd').value;
+    const confirmPwd = document.getElementById('confirmPwd').value;
+    const msg = document.getElementById('pwdMsg');
+
+    if (!currentPassword || !newPassword) {
+        msg.innerHTML = '<div style="color:#991b1b">❌ Fill all fields</div>';
+        return;
+    }
+    if (newPassword !== confirmPwd) {
+        msg.innerHTML = '<div style="color:#991b1b">❌ New passwords do not match</div>';
+        return;
+    }
+    if (newPassword.length < 6) {
+        msg.innerHTML = '<div style="color:#991b1b">❌ Min 6 characters</div>';
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/auth/change-password`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+        const r = await res.json();
+        if (r.success) {
+            msg.innerHTML = '<div style="color:#065f46">✅ Password changed! Logging out...</div>';
+            setTimeout(() => logout(), 2000);
+        } else {
+            msg.innerHTML = `<div style="color:#991b1b">❌ ${r.message}</div>`;
+        }
+    } catch (e) {
+        msg.innerHTML = '<div style="color:#991b1b">❌ Server error</div>';
+    }
+}
+
+
+
 
 // Run on load
 renderPermCheckboxes();

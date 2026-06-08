@@ -1,4 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="20" fill="#2563eb"/>
-  <text x="50" y="68" font-size="60" text-anchor="middle" fill="white" font-family="Arial">🎓</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Premium Metallic Gold Gradient -->
+    <linearGradient id="premiumGold" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#9A7B1C" />
+      <stop offset="25%" stop-color="#C5A03A" />
+      <stop offset="50%" stop-color="#FDF1A9" />
+      <stop offset="75%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#F3E5AB" />
+    </linearGradient>
+
+    <!-- Vibrant Flame Core Gradient -->
+    <linearGradient id="jyotiFlame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#FF4500" />
+      <stop offset="60%" stop-color="#FF8C00" />
+      <stop offset="100%" stop-color="#FFD700" />
+    </linearGradient>
+
+    <!-- Deep Sapphire Background -->
+    <radialGradient id="sapphireDark" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#1E293B" />
+      <stop offset="60%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#020617" />
+    </radialGradient>
+
+    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- BASE EMBLEM BACKGROUND -->
+  <circle cx="250" cy="250" r="230" fill="url(#sapphireDark)" filter="url(#subtleShadow)" />
+
+  <!-- AESTHETIC OUTER CIRCLE LAYERS (Brought back!) -->
+  <!-- Outer dashed ring -->
+  <circle cx="250" cy="250" r="220" fill="none" stroke="url(#premiumGold)" stroke-width="4" stroke-dasharray="8 4" opacity="0.8"/>
+  <!-- Inner solid framing rings -->
+  <circle cx="250" cy="250" r="208" fill="none" stroke="url(#premiumGold)" stroke-width="2.5" />
+  <circle cx="250" cy="250" r="195" fill="none" stroke="url(#premiumGold)" stroke-width="1" opacity="0.5"/>
+
+  <!-- TOP LEVEL: THE ETERNAL FLAME -->
+  <g transform="translate(250, 120) scale(0.75) translate(-250, -190)" filter="url(#subtleShadow)">
+    <path d="M250 110 C210 160 200 210 225 250 C200 210 205 170 250 110 Z" fill="url(#premiumGold)" opacity="0.4"/>
+    <path d="M250 110 C290 160 300 210 275 250 C300 210 295 170 250 110 Z" fill="url(#premiumGold)" opacity="0.4"/>
+    <path d="M250 120 C215 180 210 230 250 270 C290 230 285 180 250 120 Z" fill="url(#jyotiFlame)"/>
+    <path d="M250 160 C230 200 230 235 250 265 C270 235 270 200 250 160 Z" fill="#FFF5C0" opacity="0.9"/>
+  </g>
+
+  <!-- MID LEVEL: MODERN 'AJS' TYPOGRAPHY -->
+  <text x="250" y="290" font-family="'Montserrat', 'Poppins', 'Helvetica Neue', sans-serif" font-size="110" font-weight="900" fill="url(#premiumGold)" text-anchor="middle" filter="url(#subtleShadow)" letter-spacing="6">AJS</text>
+  
+  <!-- Accent Diamonds -->
+  <path d="M85 245 L95 255 L85 265 L75 255 Z" fill="url(#premiumGold)" opacity="0.8" filter="url(#subtleShadow)"/>
+  <path d="M415 245 L425 255 L415 265 L405 255 Z" fill="url(#premiumGold)" opacity="0.8" filter="url(#subtleShadow)"/>
+
+  <!-- BOTTOM LEVEL: THE OPEN BOOK -->
+  <g transform="translate(250, 400) scale(0.85) translate(-250, -260)">
+    <path d="M250 285 C220 275 180 280 150 295 L150 235 C180 220 220 215 250 225 Z" fill="#FFFFFF" filter="url(#subtleShadow)"/>
+    <path d="M250 285 C280 275 320 280 350 295 L350 235 C320 220 280 215 250 225 Z" fill="#FFFFFF" filter="url(#subtleShadow)"/>
+    <path d="M250 225 L250 288" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+    <path d="M170 255 Q200 242 235 250 M170 267 Q200 254 235 262" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M330 255 Q300 242 265 250 M330 267 Q300 254 265 262" stroke="#94A3B8" stroke-width="2" stroke-linecap="round" fill="none"/>
+  </g>
+
 </svg>
