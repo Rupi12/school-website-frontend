@@ -739,6 +739,50 @@ blockquote {
 }
 
 
+.footer-bottom {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.footer-bottom > p:first-child {
+    flex: 1;
+    text-align: left;
+    margin: 0;
+}
+
+.footer-bottom > p:nth-child(2) {
+    flex: 1;
+    text-align: center;
+    margin: 0;
+}
+
+.footer-bottom .staff-link {
+    flex: 1;
+    text-align: right;
+    color: #9ca3af;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.footer-bottom .staff-link:hover {
+    color: #fbbf24;
+}
+
+@media (max-width: 700px) {
+    .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+    }
+    .footer-bottom > p,
+    .footer-bottom .staff-link {
+        text-align: center;
+        flex: none;
+    }
+}
+   
 
 /* ============ NEWS STYLES ============ */
 .news-section { max-width: 1200px; margin: auto; padding: 3rem 2rem; }

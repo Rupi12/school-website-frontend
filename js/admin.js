@@ -150,35 +150,24 @@ function clearSearch() {
     handleSearch();
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function highlightText(text, searchTerm) {
-    if (!text) return '';
-    const escaped = escapeHtml(text);
-    if (!searchTerm) return escaped;
-    function highlightText(text, searchTerm) {
-    if (!text) return '';
-    const escaped = escapeHtml(text);
-    if (!searchTerm) return escaped;
-    function highlightText(text, searchTerm) {
     if (!text) return '';
     const escaped = escapeHtml(text);
     if (!searchTerm) return escaped;
     
     try {
+        const safeTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         return escaped.replace(new RegExp('(' + safeTerm + ')', 'gi'), '<span class="highlight">$1</span>');
     } catch (e) {
         return escaped;
     }
-}
-    try {
-       function highlightText(text, searchTerm) {
-    return escapeHtml(text || '');
-}
-        return escaped.replace(regex, '<span class="highlight">$1</span>');
-    } catch (e) {
-        return escaped;
-    }
-}
-    return escaped.replace(regex, '<span class="highlight">$1</span>');
 }
 
 async function updateStatus(id, status) {
@@ -288,13 +277,6 @@ function logout() {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminInfo');
     window.location.href = 'login.html';
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 document.getElementById('detailModal').addEventListener('click', (e) => {
@@ -624,13 +606,17 @@ function renderStudentList() {
     const pageItems = filtered.slice(start, start + LIST_PER_PAGE);
 
     list.innerHTML = pageItems.map(s => `
-        <div style="background:white;padding:1rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);display:flex;gap:1rem;align-items:center">
+        <div style="background:white;padding:1rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
             <div style="font-size:2rem">🎓</div>
-            <div style="flex:1">
+            <div style="flex:1;min-width:200px;">
                 <h4 style="margin:0">${escapeHtml(s.name)}</h4>
                 <small style="color:#6b7280">Roll: ${escapeHtml(s.rollNumber)} | Class ${escapeHtml(s.class)} ${escapeHtml(s.section || '')}</small>
             </div>
-            <button class="action-btn btn-delete" onclick="deleteStudent('${s._id}')">Delete</button>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <button class="action-btn btn-view" onclick="openEditStudentModal('${s._id}', '${escapeHtml(s.name)}', '${escapeHtml(s.rollNumber)}', '${escapeHtml(s.class)}', '${escapeHtml(s.section || '')}', '${escapeHtml(s.parentName || '')}', '${escapeHtml(s.phone || '')}')">✏️ Edit</button>
+                <button class="action-btn" style="background:#f59e0b; color:white;" onclick="openResetPwdModal('${s._id}', '${escapeHtml(s.name)}')">🔑 Reset Pwd</button>
+                <button class="action-btn btn-delete" onclick="deleteStudent('${s._id}')">🗑️ Delete</button>
+            </div>
         </div>
     `).join('');
 
@@ -1085,7 +1071,6 @@ function applyStatsPermissions() {
 }
 
 
-// Updated loadAdmins function to include the Edit button
 async function loadAdmins() {
     try {
         const res = await fetch(`${API_URL}/auth/admins`, { headers });
@@ -1170,10 +1155,9 @@ async function deleteAdmin(id) {
 function openEditAdminModal(admin) {
     document.getElementById('editAdminId').value = admin._id;
     document.getElementById('editAdminUsername').textContent = admin.username;
-    document.getElementById('editAdminPassword').value = ''; // Reset the password field
+    document.getElementById('editAdminPassword').value = ''; 
     document.getElementById('editAdminMsg').innerHTML = '';
     
-    // Generate checkboxes and check the ones the admin currently has
     const el = document.getElementById('editPermCheckboxes');
     el.innerHTML = ALL_PERMISSIONS.map(p => `
         <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px;cursor:pointer;">
@@ -1204,7 +1188,6 @@ if (editAdminForm) {
         btn.textContent = 'Saving...';
         
         try {
-            // 1. Update Permissions
             const permRes = await fetch(`${API_URL}/auth/admins/${adminId}`, { 
                 method: 'PUT', 
                 headers, 
@@ -1216,7 +1199,6 @@ if (editAdminForm) {
                 throw new Error(permResult.message);
             }
 
-            // 2. Update Password (only if field is not empty)
             if (newPassword) {
                 const pwdRes = await fetch(`${API_URL}/auth/admins/${adminId}/reset-password`, {
                     method: 'PUT',
@@ -1230,7 +1212,7 @@ if (editAdminForm) {
             }
 
             msg.innerHTML = '<div style="color:#065f46;background:#d1fae5;padding:0.8rem;border-radius:5px">✅ Sub-admin updated successfully!</div>';
-            loadAdmins(); // Refresh the list behind the modal
+            loadAdmins(); 
             
             setTimeout(() => {
                 closeEditAdminModal();
@@ -1245,14 +1227,12 @@ if (editAdminForm) {
     });
 }
 
-// Close modal when clicking outside of it
-document.getElementById('editAdminModal').addEventListener('click', (e) => {
+document.getElementById('editAdminModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'editAdminModal') closeEditAdminModal();
 });
 
 
 // ============ CHANGE PASSWORD (superadmin) ============
-// Show button only for superadmin
 if (myRole === 'superadmin') {
     const cpBtn = document.getElementById('changePwdBtn');
     if (cpBtn) cpBtn.style.display = '';
@@ -1307,7 +1287,163 @@ async function submitChangePassword() {
     }
 }
 
+// ==========================================
+// NEW FEATURES: BULK UPLOAD, EDIT, RESET PWD
+// ==========================================
 
+// 1. Bulk Upload
+document.getElementById('bulkUploadForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('bulkStudentFile');
+    if (!fileInput.files.length) return alert('Please select a file first.');
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    const msg = document.getElementById('bulkUploadMsg');
+    msg.style.color = '#2563eb';
+    msg.innerHTML = '⏳ Uploading and processing... please wait.';
+
+    try {
+        const res = await fetch(`${API_URL}/student/bulk`, {
+            method: 'POST',
+            body: formData
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            msg.innerHTML = `<span style="color:#10b981">✅ ${result.message}</span>`;
+            fileInput.value = ''; 
+            loadStudentsAdmin(); 
+        } else {
+            msg.innerHTML = `<span style="color:#ef4444">❌ ${result.message}</span>`;
+        }
+    } catch (error) {
+        msg.innerHTML = '<span style="color:#ef4444">❌ Server error during upload.</span>';
+    }
+});
+
+// 2. Edit Student
+window.openEditStudentModal = function(id, name, roll, studentClass, section, parent, phone) {
+    document.getElementById('editStudentId').value = id;
+    document.getElementById('editStudentName').value = name || '';
+    document.getElementById('editStudentRoll').value = roll || '';
+    document.getElementById('editStudentClass').value = studentClass || '';
+    document.getElementById('editStudentSection').value = section || '';
+    document.getElementById('editStudentParent').value = parent || '';
+    document.getElementById('editStudentPhone').value = phone || '';
+    document.getElementById('editStudentModal').classList.add('active');
+};
+
+document.getElementById('editStudentForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editStudentId').value;
+    const msg = document.getElementById('editStudentMsg');
+    
+    const data = {
+        name: document.getElementById('editStudentName').value,
+        rollNumber: document.getElementById('editStudentRoll').value,
+        studentClass: document.getElementById('editStudentClass').value,
+        section: document.getElementById('editStudentSection').value,
+        parentName: document.getElementById('editStudentParent').value,
+        phone: document.getElementById('editStudentPhone').value,
+    };
+
+    msg.innerHTML = '⏳ Saving...';
+    try {
+        const res = await fetch(`${API_URL}/student/${id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            msg.innerHTML = '<span style="color:#10b981">✅ Updated successfully!</span>';
+            setTimeout(() => {
+                document.getElementById('editStudentModal').classList.remove('active');
+                msg.innerHTML = '';
+                loadStudentsAdmin();
+            }, 1000);
+        } else {
+            msg.innerHTML = `<span style="color:#ef4444">❌ ${result.message}</span>`;
+        }
+    } catch (error) {
+        msg.innerHTML = '<span style="color:#ef4444">❌ Error saving student.</span>';
+    }
+});
+
+// 3. Reset Password
+window.openResetPwdModal = function(id, name) {
+    document.getElementById('resetPwdStudentId').value = id;
+    document.getElementById('resetPwdStudentName').innerText = name;
+    document.getElementById('newStudentPassword').value = ''; 
+    document.getElementById('resetStudentPwdModal').classList.add('active');
+};
+
+document.getElementById('resetStudentPwdForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('resetPwdStudentId').value;
+    const password = document.getElementById('newStudentPassword').value;
+    const msg = document.getElementById('resetStudentPwdMsg');
+
+    if (password.length < 6) return msg.innerHTML = '<span style="color:#ef4444">❌ Min 6 characters.</span>';
+
+    msg.innerHTML = '<span style="color:#2563eb">⏳ Resetting...</span>';
+
+    try {
+        const res = await fetch(`${API_URL}/student/${id}/reset-password`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ password })
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            msg.innerHTML = '<span style="color:#10b981">✅ Password reset!</span>';
+            setTimeout(() => {
+                document.getElementById('resetStudentPwdModal').classList.remove('active');
+                msg.innerHTML = '';
+            }, 1000);
+        } else {
+            msg.innerHTML = `<span style="color:#ef4444">❌ ${result.message}</span>`;
+        }
+    } catch (error) {
+        msg.innerHTML = '<span style="color:#ef4444">❌ Server error.</span>';
+    }
+});
+
+
+// 4. Export Students to CSV
+window.exportStudents = function() {
+    if (!allStudents || allStudents.length === 0) {
+        return alert('No students to export.');
+    }
+    
+    const cols = ['Name', 'Roll Number', 'Class', 'Section', 'Parent Name', 'Phone'];
+    
+    const rows = allStudents.map(s => [
+        s.name || '', 
+        s.rollNumber || '', 
+        s.class || '', 
+        s.section || '', 
+        s.parentName || '', 
+        s.phone || ''
+    ]);
+    
+    let csv = cols.join(',') + '\n';
+    rows.forEach(row => { 
+        csv += row.map(f => `"${String(f).replace(/"/g, '""')}"`).join(',') + '\n'; 
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `AJS_Students_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
 
 
 // Run on load

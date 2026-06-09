@@ -78,7 +78,7 @@
             
             <!-- Login Subtitle -->
             <div style="text-align: center; margin-bottom: 1.5rem; color: #2563eb; font-weight: 600; font-size: 1.1rem;">
-                Admin Login Portal
+                Staff Login Portal
             </div>
             <form id="loginForm">
                 <div class="form-group">
@@ -109,45 +109,48 @@
             window.location.href = 'admin.html';
         }
 
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
-            const msg = document.getElementById('loginMessage');
-            const btn = document.getElementById('loginBtn');
-            
-            btn.disabled = true;
-            btn.textContent = 'Logging in...';
-            msg.style.display = 'none';
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    const msg = document.getElementById('loginMessage');
+    const btn = document.getElementById('loginBtn');
 
-            try {
-                const response = await fetch(`${API_URL}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
+    btn.disabled = true;
+    btn.textContent = 'Logging in...';
+    msg.style.display = 'none';
 
-                const result = await response.json();
-                
-                if (result.success) {
-                    localStorage.setItem('adminToken', result.token);
-                    localStorage.setItem('adminInfo', JSON.stringify(result.admin));
-                    msg.className = 'form-message success';
-                    msg.textContent = '✅ Login successful! Redirecting...';
-                    setTimeout(() => window.location.href = 'admin.html', 1000);
-                } else {
-                    msg.className = 'form-message error';
-                    msg.textContent = '❌ ' + (result.message || 'Login failed');
-                    btn.disabled = false;
-                    btn.textContent = 'Login';
-                }
-            } catch (error) {
-                msg.className = 'form-message error';
-                msg.textContent = '❌ Server error. Make sure backend is running.';
-                btn.disabled = false;
-                btn.textContent = 'Login';
-            }
+    try {
+        const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
         });
+
+        const result = await response.json();
+
+        if (result.success) {
+            localStorage.setItem('adminToken', result.token);
+            localStorage.setItem('adminInfo', JSON.stringify(result.admin));
+            msg.className = 'form-message success';
+            msg.style.display = 'block';
+            msg.textContent = '✅ Login successful! Redirecting...';
+            setTimeout(() => window.location.href = 'admin.html', 1000);
+        } else {
+            msg.className = 'form-message error';
+            msg.style.display = 'block';
+            msg.textContent = '❌ ' + (result.message || 'Login failed');
+            btn.disabled = false;
+            btn.textContent = 'Login';
+        }
+    } catch (error) {
+        msg.className = 'form-message error';
+        msg.style.display = 'block';
+        msg.textContent = '❌ Server error. Make sure backend is running.';
+        btn.disabled = false;
+        btn.textContent = 'Login';
+    }
+});
     </script>
 </body>
 </html>

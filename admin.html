@@ -67,9 +67,7 @@
         .btn-view:hover { background: #2563eb; }
         .btn-delete:hover { background: #dc2626; }
         .hidden { display: none; }
-        .empty-state {
-            text-align: center; padding: 3rem; color: #6b7280;
-        }
+        .empty-state { text-align: center; padding: 3rem; color: #6b7280; }
         .modal {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: rgba(0,0,0,0.5);
@@ -87,155 +85,74 @@
         .detail-row { margin-bottom: 1rem; }
         .detail-row strong { color: #2563eb; display: inline-block; min-width: 150px; }
 
-                    .search-bar {
-                background: white;
-                padding: 1rem;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-                margin-bottom: 1rem;
-                display: flex;
-                gap: 1rem;
-                align-items: center;
-                flex-wrap: wrap;
-            }
+        .search-bar {
+            background: white; padding: 1rem; border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 1rem;
+            display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
+        }
+        .search-icon { font-size: 1.2rem; }
+        #searchInput {
+            flex: 1; min-width: 200px; padding: 0.7rem 1rem;
+            border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;
+            font-family: inherit; transition: border-color 0.3s;
+        }
+        #searchInput:focus { outline: none; border-color: #2563eb; }
+        #filterStatus {
+            padding: 0.7rem 1rem; border: 2px solid #e5e7eb;
+            border-radius: 8px; font-size: 1rem; font-family: inherit;
+            cursor: pointer; background: white;
+        }
+        .clear-btn {
+            padding: 0.7rem 1.2rem; background: #6b7280; color: white;
+            border: none; border-radius: 8px; cursor: pointer; font-weight: 600;
+        }
+        .clear-btn:hover { background: #4b5563; }
+        .result-count { color: #6b7280; margin-bottom: 1rem; font-style: italic; }
+        .highlight { background: #fbbf24; padding: 2px 4px; border-radius: 3px; font-weight: 600; }
+        @media (max-width: 600px) {
+            .search-bar { flex-direction: column; align-items: stretch; }
+            #searchInput, #filterStatus, .clear-btn { width: 100%; }
+        }
 
-            .search-icon {
-                font-size: 1.2rem;
-            }
-
-            #searchInput {
-                flex: 1;
-                min-width: 200px;
-                padding: 0.7rem 1rem;
-                border: 2px solid #e5e7eb;
-                border-radius: 8px;
-                font-size: 1rem;
-                font-family: inherit;
-                transition: border-color 0.3s;
-            }
-
-            #searchInput:focus {
-                outline: none;
-                border-color: #2563eb;
-            }
-
-            #filterStatus {
-                padding: 0.7rem 1rem;
-                border: 2px solid #e5e7eb;
-                border-radius: 8px;
-                font-size: 1rem;
-                font-family: inherit;
-                cursor: pointer;
-                background: white;
-            }
-
-            .clear-btn {
-                padding: 0.7rem 1.2rem;
-                background: #6b7280;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                font-weight: 600;
-            }
-
-            .clear-btn:hover {
-                background: #4b5563;
-            }
-
-            .result-count {
-                color: #6b7280;
-                margin-bottom: 1rem;
-                font-style: italic;
-            }
-
-            .highlight {
-                background: #fbbf24;
-                padding: 2px 4px;
-                border-radius: 3px;
-                font-weight: 600;
-            }
-
-            @media (max-width: 600px) {
-                .search-bar {
-                    flex-direction: column;
-                    align-items: stretch;
-                }
-                #searchInput, #filterStatus, .clear-btn {
-                    width: 100%;
-                }
-            }
-                            
-
-
-
-
-                            .gallery-admin-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                    gap: 1rem;
-                }
-                .gallery-admin-item {
-                    background: white;
-                    border-radius: 10px;
-                    overflow: hidden;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-                    position: relative;
-                }
-                .gallery-admin-item img {
-                    width: 100%;
-                    height: 150px;
-                    object-fit: cover;
-                }
-                .gallery-admin-info {
-                    padding: 0.8rem;
-                }
-                .gallery-admin-info h4 {
-                    margin: 0 0 0.3rem;
-                    font-size: 0.95rem;
-                }
-                .gallery-admin-info .cat {
-                    background: #dbeafe;
-                    color: #1e40af;
-                    padding: 0.2rem 0.6rem;
-                    border-radius: 12px;
-                    font-size: 0.75rem;
-                }
-                .gallery-delete-btn {
-                    position: absolute;
-                    top: 8px;
-                    right: 8px;
-                    background: #ef4444;
-                    color: white;
-                    border: none;
-                    width: 30px;
-                    height: 30px;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    font-weight: bold;
-                }
-                .spinner {
-                    display: inline-block;
-                    width: 16px;
-                    height: 16px;
-                    border: 3px solid rgba(255,255,255,0.3);
-                    border-radius: 50%;
-                    border-top-color: white;
-                    animation: spin 0.8s linear infinite;
-                    vertical-align: middle;
-                    margin-right: 6px;
-                }
-                @keyframes spin {
-                    to { transform: rotate(360deg); }
-                }
-                .sd-mini-btn { padding: 0.6rem 1rem; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: inherit; }
-.sd-mini-btn:hover { background: #2563eb; }
+        .gallery-admin-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;
+        }
+        .gallery-admin-item {
+            background: white; border-radius: 10px; overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08); position: relative;
+        }
+        .gallery-admin-item img {
+            width: 100%; height: 150px; object-fit: cover;
+        }
+        .gallery-admin-info { padding: 0.8rem; }
+        .gallery-admin-info h4 { margin: 0 0 0.3rem; font-size: 0.95rem; }
+        .gallery-admin-info .cat {
+            background: #dbeafe; color: #1e40af; padding: 0.2rem 0.6rem;
+            border-radius: 12px; font-size: 0.75rem;
+        }
+        .gallery-delete-btn {
+            position: absolute; top: 8px; right: 8px; background: #ef4444;
+            color: white; border: none; width: 30px; height: 30px;
+            border-radius: 50%; cursor: pointer; font-weight: bold;
+        }
+        .spinner {
+            display: inline-block; width: 16px; height: 16px;
+            border: 3px solid rgba(255,255,255,0.3); border-radius: 50%;
+            border-top-color: white; animation: spin 0.8s linear infinite;
+            vertical-align: middle; margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .sd-mini-btn {
+            padding: 0.6rem 1rem; background: #3b82f6; color: white;
+            border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: inherit;
+        }
+        .sd-mini-btn:hover { background: #2563eb; }
     </style>
 </head>
 <body>
     <div class="admin-container">
-     <div class="admin-header">
-            <!-- Top Dashboard Logo & Title -->
+        
+        <div class="admin-header">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <img src="favicon.svg" alt="Amar Jyoti School Logo" style="height: 60px; width: 60px; object-fit: contain; flex-shrink: 0;">
                 <div style="display: flex; flex-direction: column; justify-content: center;">
@@ -243,8 +160,6 @@
                     <small style="color:#2563eb; font-weight: 600; margin-top: 3px;">Admin/Faculty Dashboard</small>
                 </div>
             </div>
-            
-            <!-- Admin Info & Buttons (Kept Exactly The Same) -->
             <div class="admin-info">
                 <span id="adminName">👤 Admin</span>
                 <button id="changePwdBtn" onclick="openChangePassword()" style="display:none;margin-right:0.5rem;padding:0.4rem 0.8rem;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:0.85rem">🔑 Change Password</button>
@@ -253,63 +168,46 @@
         </div>
 
         <div class="stats-grid">
-            <div class="stat-card">
-                <h3 id="totalApps">0</h3>
-                <p>Total Applications</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="pendingApps">0</h3>
-                <p>Pending Review</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="totalMsgs">0</h3>
-                <p>Total Messages</p>
-            </div>
-            <div class="stat-card">
-                <h3 id="unreadMsgs">0</h3>
-                <p>Unread Messages</p>
-            </div>
+            <div class="stat-card"><h3 id="totalApps">0</h3><p>Total Applications</p></div>
+            <div class="stat-card"><h3 id="pendingApps">0</h3><p>Pending Review</p></div>
+            <div class="stat-card"><h3 id="totalMsgs">0</h3><p>Total Messages</p></div>
+            <div class="stat-card"><h3 id="unreadMsgs">0</h3><p>Unread Messages</p></div>
         </div>
 
         <div class="tabs">
-    <button class="tab-btn active" onclick="showTab('applications', this)">📝 Applications</button>
-    <button class="tab-btn" onclick="showTab('messages', this)">💬 Messages</button>
-    <button class="tab-btn" onclick="showTab('gallery', this)">📸 Gallery</button>
-    <button class="tab-btn" onclick="showTab('news', this)">📰 News</button>
-    <button class="tab-btn" onclick="showTab('documents', this)">📄 Documents</button>
-    <button class="tab-btn" onclick="showTab('students', this)">🎓 Students</button>
-    <button class="tab-btn" id="adminsTabBtn" onclick="showTab('admins', this)" style="display:none">🔐 Manage Admins</button>
-    
-</div>
+            <button class="tab-btn active" onclick="showTab('applications', this)">📝 Applications</button>
+            <button class="tab-btn" onclick="showTab('messages', this)">💬 Messages</button>
+            <button class="tab-btn" onclick="showTab('gallery', this)">📸 Gallery</button>
+            <button class="tab-btn" onclick="showTab('news', this)">📰 News</button>
+            <button class="tab-btn" onclick="showTab('documents', this)">📄 Documents</button>
+            <button class="tab-btn" onclick="showTab('students', this)">🎓 Students</button>
+            <button class="tab-btn" id="adminsTabBtn" onclick="showTab('admins', this)" style="display:none">🔐 Manage Admins</button>
+        </div>
+        
+        
+        <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search by name, email, or phone..." onkeyup="handleSearch()">
+            <select id="filterStatus" onchange="handleSearch()">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="reviewing">Reviewing</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+            </select>
+            <button class="clear-btn" onclick="clearSearch()">Clear</button>
+        </div>
 
-<div class="search-bar">
-    <span class="search-icon">🔍</span>
-    <input type="text" id="searchInput" placeholder="Search by name, email, or phone..." onkeyup="handleSearch()">
-    <select id="filterStatus" onchange="handleSearch()">
-        <option value="">All Status</option>
-        <option value="pending">Pending</option>
-        <option value="reviewing">Reviewing</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-    </select>
-    <button class="clear-btn" onclick="clearSearch()">Clear</button>
-</div>
+        <div id="resultCount" class="result-count"></div>
 
-<div id="resultCount" class="result-count"></div>
-
+        <!-- APPLICATIONS TAB -->
         <div id="applications-tab">
             <button onclick="exportApplications()" class="btn btn-primary" style="margin-bottom:1rem">📥 Export to Excel (CSV)</button>
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Student</th>
-                            <th>Grade</th>
-                            <th>Parent</th>
-                            <th>Phone</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
+                            <th>Student</th><th>Grade</th><th>Parent</th><th>Phone</th><th>Status</th><th>Date</th><th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="applicationsTable"></tbody>
@@ -317,17 +215,13 @@
             </div>
         </div>
 
+        <!-- MESSAGES TAB -->
         <div id="messages-tab" class="hidden">
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Subject</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                            <th>Name</th><th>Email</th><th>Subject</th><th>Date</th><th>Status</th><th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="messagesTable"></tbody>
@@ -335,247 +229,262 @@
             </div>
         </div>
         
-        
+        <!-- GALLERY TAB -->
         <div id="gallery-tab" class="hidden">
-    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-        <h3 style="margin-top:0;color:#2563eb">➕ Add New Photo</h3>
-        <form id="galleryForm" style="display:grid;gap:1rem">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                <div>
-                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Title *</label>
-                    <input type="text" name="title" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                <h3 style="margin-top:0;color:#2563eb">➕ Add New Photo</h3>
+                <form id="galleryForm" style="display:grid;gap:1rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                        <div>
+                            <label style="display:block;margin-bottom:0.5rem;font-weight:600">Title *</label>
+                            <input type="text" name="title" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:0.5rem;font-weight:600">Category *</label>
+                            <select name="category" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                <option value="Events">Events</option><option value="Sports">Sports</option><option value="Campus">Campus</option>
+                                <option value="Academics">Academics</option><option value="Cultural">Cultural</option><option value="Others">Others</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block;margin-bottom:0.5rem;font-weight:600">Upload Image * (Max 5MB)</label>
+                        <input type="file" name="image" id="imageInput" accept="image/*" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
+                    </div>
+                    <div id="imagePreview" style="display:none">
+                        <img id="previewImg" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover">
+                    </div>
+                    <div>
+                        <label style="display:block;margin-bottom:0.5rem;font-weight:600">Description</label>
+                        <textarea name="description" rows="2" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="justify-self:start">Upload Photo</button>
+                </form>
+                <div id="galleryMsg" style="margin-top:1rem"></div>
+            </div>
+            <div class="gallery-admin-grid" id="adminGalleryGrid"></div>
+        </div>
+
+        <!-- NEWS TAB -->
+        <div id="news-tab" class="hidden">
+            <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                <h3 style="margin-top:0;color:#2563eb">➕ Add News/Event</h3>
+                <form id="newsForm" style="display:grid;gap:1rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                        <div>
+                            <label style="display:block;margin-bottom:0.5rem;font-weight:600">Title *</label>
+                            <input type="text" name="title" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:0.5rem;font-weight:600">Category *</label>
+                            <select name="category" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                <option value="News">News</option><option value="Events">Events</option>
+                                <option value="Achievements">Achievements</option><option value="Announcements">Announcements</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                        <div>
+                            <label style="display:block;margin-bottom:0.5rem;font-weight:600">Event Date (optional)</label>
+                            <input type="date" name="eventDate" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:1.8rem">
+                            <input type="checkbox" name="isPinned" id="isPinned" style="width:18px;height:18px">
+                            <label for="isPinned" style="font-weight:600">📌 Pin to top</label>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block;margin-bottom:0.5rem;font-weight:600">Description *</label>
+                        <textarea name="description" rows="4" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"></textarea>
+                    </div>
+                    <div>
+                        <label style="display:block;margin-bottom:0.5rem;font-weight:600">Image (optional)</label>
+                        <input type="file" name="image" id="newsImageInput" accept="image/*" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="justify-self:start">Add News</button>
+                </form>
+                <div id="newsMsg" style="margin-top:1rem"></div>
+            </div>
+            <div id="adminNewsList" style="display:grid;gap:1rem"></div>
+        </div>
+
+        <!-- STUDENTS TAB (FIXED WRAPPER) -->
+        <div id="students-tab" class="hidden">
+            <!-- 1. Add Student -->
+            <div data-perm="students.list" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                
+                <h3 style="margin-top:0;color:#2563eb">➕ Add Student</h3>
+                
+                <form id="studentForm" style="display:grid;gap:1rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                        <input type="text" name="name" placeholder="Name *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <input type="text" name="rollNumber" placeholder="Roll Number *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+                        <input type="text" name="class" placeholder="Class *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <input type="text" name="section" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                        <input type="text" name="parentName" placeholder="Parent Name" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <input type="text" name="phone" placeholder="Phone" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="justify-self:start">Add Single Student</button>
+                </form>
+                <div id="studentMsg" style="margin-top:1rem"></div>
+
+                <div style="display:flex;align-items:center;margin:2rem 0;color:#9ca3af;font-weight:600">
+                    <div style="flex:1;height:1px;background:#e5e7eb"></div>
+                    <span style="padding:0 1rem;font-size:0.85rem;letter-spacing:1px;">OR BULK UPLOAD</span>
+                    <div style="flex:1;height:1px;background:#e5e7eb"></div>
                 </div>
-                <div>
-                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Category *</label>
-                    <select name="category" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <option value="Events">Events</option>
-                        <option value="Sports">Sports</option>
-                        <option value="Campus">Campus</option>
-                        <option value="Academics">Academics</option>
-                        <option value="Cultural">Cultural</option>
-                        <option value="Others">Others</option>
+
+                <p style="color:#6b7280; font-size: 0.9rem; margin-bottom: 0.8rem;">Upload a CSV file. Need the correct format?</p>
+                <form id="bulkUploadForm" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+                    <input type="file" id="bulkStudentFile" accept=".csv" required style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;background:#f9fafb;flex:1;min-width:250px;color:#4b5563;">
+                    <button type="submit" class="btn btn-primary">Upload CSV</button>
+                    <a href="data:text/csv;charset=utf-8,Name,Roll Number,Class,Section,Password,Parent Name,Phone%0AJohn Doe,101,10,A,123456,Robert Doe,9876543210" download="AJS_Student_Upload_Template.csv" style="padding:0.6rem 1rem; background:#f3f4f6; color:#374151; text-decoration:none; border-radius:8px; border:1px solid #d1d5db; font-weight:600; white-space:nowrap; transition: background 0.2s;">
+                        ⬇️ Download Template
+                    </a>
+                </form>
+                <div id="bulkUploadMsg" style="margin-top:1rem"></div>
+            </div>
+
+         
+
+            <!-- 2. Manage Student Data -->
+            <div data-perm="students.manage" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                <h3 style="margin-top:0;color:#2563eb">⚙️ Manage Student Data</h3>
+                <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
+                    <select id="manageClass" onchange="loadClassStudents()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <option value="">Select Class...</option>
                     </select>
+                    <input type="text" id="studentSearch" onkeyup="filterStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px" disabled>
                 </div>
-            </div>
-            <div>
-                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Upload Image * (Max 5MB)</label>
-                <input type="file" name="image" id="imageInput" accept="image/*" required 
-                       style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
-            </div>
-            <div id="imagePreview" style="display:none">
-                <img id="previewImg" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover">
-            </div>
-            <div>
-                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Description</label>
-                <textarea name="description" rows="2" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary" style="justify-self:start">Upload Photo</button>
-        </form>
-        <div id="galleryMsg" style="margin-top:1rem"></div>
-    </div>
+                <select id="selectStudent" size="6" onchange="onStudentSelect()" style="width:100%;padding:0.5rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:1rem;display:none"></select>
 
-    <div class="gallery-admin-grid" id="adminGalleryGrid"></div>
-</div>
-    </div>
-
-
-
-<div id="news-tab" class="hidden">
-    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-        <h3 style="margin-top:0;color:#2563eb">➕ Add News/Event</h3>
-        <form id="newsForm" style="display:grid;gap:1rem">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                <div>
-                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Title *</label>
-                    <input type="text" name="title" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                <div id="manageActions" style="display:none;gap:0.5rem;flex-wrap:wrap">
+                    <button class="sd-mini-btn" onclick="showManage('result')">📊 Add Result</button>
+                    <button class="sd-mini-btn" onclick="showManage('fee')">💰 Add Fee</button>
+                    <button class="sd-mini-btn" onclick="showManage('doc')">📄 Upload Doc</button>
+                    <button class="sd-mini-btn" onclick="showManage('view')">👁️ View/Delete Data</button>
                 </div>
-                <div>
-                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Category *</label>
-                    <select name="category" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <option value="News">News</option>
-                        <option value="Events">Events</option>
-                        <option value="Achievements">Achievements</option>
-                        <option value="Announcements">Announcements</option>
+                <div id="manageForms" style="margin-top:1rem"></div>
+            </div>
+
+            <!-- 3. Bulk Attendance -->
+            <div data-perm="students.bulk" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                <h3 style="margin-top:0;color:#2563eb">📅 Bulk Attendance (by Class)</h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+                    <select id="bulkClass" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <option value="">Select Class...</option>
                     </select>
+                    <input type="date" id="bulkDate" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
                 </div>
+                <button class="btn btn-primary" onclick="loadBulkAttendance()">Load Students</button>
+                <div id="bulkList" style="margin-top:1rem"></div>
+                <div id="bulkMsg" style="margin-top:1rem"></div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                <div>
-                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Event Date (optional)</label>
-                    <input type="date" name="eventDate" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+
+            <!-- 4. Timetable -->
+            <div data-perm="students.timetable" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                <h3 style="margin-top:0;color:#2563eb">🗓️ Set Timetable (by Class)</h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+                    <input type="text" id="ttClass" placeholder="Class *" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                    <input type="text" id="ttSection" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
                 </div>
-                <div style="display:flex;align-items:center;gap:0.5rem;margin-top:1.8rem">
-                    <input type="checkbox" name="isPinned" id="isPinned" style="width:18px;height:18px">
-                    <label for="isPinned" style="font-weight:600">📌 Pin to top</label>
-                </div>
+                <select id="ttDay" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem">
+                    <option value="">Select Day...</option>
+                    <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+                    <option>Thursday</option><option>Friday</option><option>Saturday</option>
+                </select>
+                <div id="periodRows"></div>
+                <button class="sd-mini-btn" onclick="addPeriodRow()" style="margin:0.5rem 0">+ Add Period</button><br>
+                <button class="sd-mini-btn" onclick="addDayToTimetable()" style="background:#10b981">✓ Add This Day</button>
+                <div id="ttPreview" style="margin-top:1rem"></div>
+                <button onclick="saveTimetable()" class="btn btn-primary" style="margin-top:1rem">Save Full Timetable</button>
+                <div id="ttMsg" style="margin-top:1rem"></div>
             </div>
-            <div>
-                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Description *</label>
-                <textarea name="description" rows="4" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"></textarea>
-            </div>
-            <div>
-                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Image (optional)</label>
-                <input type="file" name="image" id="newsImageInput" accept="image/*" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
-            </div>
-            <button type="submit" class="btn btn-primary" style="justify-self:start">Add News</button>
-        </form>
-        <div id="newsMsg" style="margin-top:1rem"></div>
-    </div>
-    <div id="adminNewsList" style="display:grid;gap:1rem"></div>
-</div>
 
-
-
-<div id="students-tab" class="hidden">
-
-    <!-- 1. Add Student -->
-    <div data-perm="students.list" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-        <h3 style="margin-top:0;color:#2563eb">➕ Add Student</h3>
-        <form id="studentForm" style="display:grid;gap:1rem">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                <input type="text" name="name" placeholder="Name *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                <input type="text" name="rollNumber" placeholder="Roll Number *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
-                <input type="text" name="class" placeholder="Class *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                <input type="text" name="section" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                <input type="text" name="parentName" placeholder="Parent Name" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                <input type="text" name="phone" placeholder="Phone" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-            </div>
-            <button type="submit" class="btn btn-primary" style="justify-self:start">Add Student</button>
-        </form>
-        <div id="studentMsg" style="margin-top:1rem"></div>
-    </div>
-
-    <!-- 2. Manage Student Data -->
-    <div data-perm="students.manage" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-        <h3 style="margin-top:0;color:#2563eb">⚙️ Manage Student Data</h3>
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
-            <select id="manageClass" onchange="loadClassStudents()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                <option value="">Select Class...</option>
-            </select>
-            <input type="text" id="studentSearch" onkeyup="filterStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px" disabled>
-        </div>
-        <select id="selectStudent" size="6" onchange="onStudentSelect()" style="width:100%;padding:0.5rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:1rem;display:none"></select>
-
-        <div id="manageActions" style="display:none;gap:0.5rem;flex-wrap:wrap">
-            <button class="sd-mini-btn" onclick="showManage('result')">📊 Add Result</button>
-            <button class="sd-mini-btn" onclick="showManage('fee')">💰 Add Fee</button>
-            <button class="sd-mini-btn" onclick="showManage('doc')">📄 Upload Doc</button>
-            <button class="sd-mini-btn" onclick="showManage('view')">👁️ View/Delete Data</button>
-        </div>
-        <div id="manageForms" style="margin-top:1rem"></div>
-    </div>
-
-    <!-- 3. Bulk Attendance -->
-    <div data-perm="students.bulk" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-        <h3 style="margin-top:0;color:#2563eb">📅 Bulk Attendance (by Class)</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-            <select id="bulkClass" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                <option value="">Select Class...</option>
-            </select>
-            <input type="date" id="bulkDate" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-        </div>
-        <button class="btn btn-primary" onclick="loadBulkAttendance()">Load Students</button>
-        <div id="bulkList" style="margin-top:1rem"></div>
-        <div id="bulkMsg" style="margin-top:1rem"></div>
-    </div>
-
-    <!-- 4. Timetable -->
-    <div data-perm="students.timetable" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-        <h3 style="margin-top:0;color:#2563eb">🗓️ Set Timetable (by Class)</h3>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-            <input type="text" id="ttClass" placeholder="Class *" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-            <input type="text" id="ttSection" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-        </div>
-        <select id="ttDay" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem">
-            <option value="">Select Day...</option>
-            <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
-            <option>Thursday</option><option>Friday</option><option>Saturday</option>
-        </select>
-        <div id="periodRows"></div>
-        <button class="sd-mini-btn" onclick="addPeriodRow()" style="margin:0.5rem 0">+ Add Period</button><br>
-        <button class="sd-mini-btn" onclick="addDayToTimetable()" style="background:#10b981">✓ Add This Day</button>
-        <div id="ttPreview" style="margin-top:1rem"></div>
-        <button onclick="saveTimetable()" class="btn btn-primary" style="margin-top:1rem">Save Full Timetable</button>
-        <div id="ttMsg" style="margin-top:1rem"></div>
-    </div>
-
-    <!-- 5. Student List -->
-    <div data-perm="students.list">
-    <h3 style="color:#2563eb">All Students</h3>
-    <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
-        <select id="listClassFilter" onchange="renderStudentList()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-            <option value="">All Classes</option>
-        </select>
-        <input type="text" id="listSearch" onkeyup="renderStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-    </div>
-    <div id="adminStudentList" style="display:grid;gap:1rem"></div>
-    <div id="listPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
-    </div>
-
-</div> 
-
-
-
-
-<div id="admins-tab" class="hidden">
-    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-        <h3 style="margin-top:0;color:#2563eb">➕ Create Sub-Admin</h3>
-        <form id="adminForm" style="display:grid;gap:1rem">
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
-                <input type="text" name="username" placeholder="Username *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                <input type="email" name="email" placeholder="Email *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-            </div>
-            <div>
-                <label style="font-weight:600;display:block;margin-bottom:0.5rem">Permissions:</label>
-                <div id="permCheckboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem"></div>
-            </div>
-            <button type="submit" class="btn btn-primary" style="justify-self:start">Create Sub-Admin</button>
-        </form>
-        <div id="adminMsg" style="margin-top:1rem"></div>
-    </div>
-
-    <h3 style="color:#2563eb">All Admins</h3>
-    <div id="adminsList" style="display:grid;gap:1rem"></div>
-</div>
-
-<div id="documents-tab" class="hidden">
-    <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-        <h3 style="margin-top:0;color:#2563eb">➕ Upload Document</h3>
-        <form id="docForm" style="display:grid;gap:1rem">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                <div>
-                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Title *</label>
-                    <input type="text" name="title" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                </div>
-                <div>
-                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Category *</label>
-                    <select name="category" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <option value="Results">Results</option>
-                        <option value="Notices">Notices</option>
-                        <option value="Forms">Forms</option>
-                        <option value="Circulars">Circulars</option>
-                        <option value="Others">Others</option>
+            <!-- 5. Student List -->
+            <div data-perm="students.list">
+                <h3 style="color:#2563eb">All Students</h3>
+                
+                <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
+                    <select id="listClassFilter" onchange="renderStudentList()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit;">
+                        <option value="">All Classes</option>
                     </select>
+                    <input type="text" id="listSearch" onkeyup="renderStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit;">
                 </div>
-            </div>
-            <div>
-                <label style="display:block;margin-bottom:0.5rem;font-weight:600">File (PDF/DOC/XLS, max 10MB) *</label>
-                <input type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
-            </div>
-            <button type="submit" class="btn btn-primary" style="justify-self:start">Upload Document</button>
-        </form>
-        <div id="docMsg" style="margin-top:1rem"></div>
-    </div>
-    <div id="adminDocList" style="display:grid;gap:1rem"></div>
-</div>
 
-<!-- Modal for viewing details -->
+                <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+                    <button onclick="exportStudents()" class="btn btn-primary">📥 Export Students to CSV</button>
+                </div>
+                
+                <div id="adminStudentList" style="display:grid;gap:1rem"></div>
+                <div id="listPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
+            </div>
+        </div> 
+
+        
+        <!-- END OF STUDENTS TAB -->
+
+        <!-- ADMINS TAB -->
+        <div id="admins-tab" class="hidden">
+            <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                <h3 style="margin-top:0;color:#2563eb">➕ Create Sub-Admin</h3>
+                <form id="adminForm" style="display:grid;gap:1rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+                        <input type="text" name="username" placeholder="Username *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <input type="email" name="email" placeholder="Email *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                    </div>
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:0.5rem">Permissions:</label>
+                        <div id="permCheckboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="justify-self:start">Create Sub-Admin</button>
+                </form>
+                <div id="adminMsg" style="margin-top:1rem"></div>
+            </div>
+            <h3 style="color:#2563eb">All Admins</h3>
+            <div id="adminsList" style="display:grid;gap:1rem"></div>
+        </div>
+
+        <!-- DOCUMENTS TAB -->
+        <div id="documents-tab" class="hidden">
+            <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                <h3 style="margin-top:0;color:#2563eb">➕ Upload Document</h3>
+                <form id="docForm" style="display:grid;gap:1rem">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                        <div>
+                            <label style="display:block;margin-bottom:0.5rem;font-weight:600">Title *</label>
+                            <input type="text" name="title" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        </div>
+                        <div>
+                            <label style="display:block;margin-bottom:0.5rem;font-weight:600">Category *</label>
+                            <select name="category" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                <option value="Results">Results</option><option value="Notices">Notices</option>
+                                <option value="Forms">Forms</option><option value="Circulars">Circulars</option><option value="Others">Others</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block;margin-bottom:0.5rem;font-weight:600">File (PDF/DOC/XLS, max 10MB) *</label>
+                        <input type="file" name="file" accept=".pdf,.doc,.docx,.xls,.xlsx" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="justify-self:start">Upload Document</button>
+                </form>
+                <div id="docMsg" style="margin-top:1rem"></div>
+            </div>
+            <div id="adminDocList" style="display:grid;gap:1rem"></div>
+        </div>
+
+    </div> <!-- CLOSE MAIN CONTAINER -->
+
+    <!-- ================= MODALS ================= -->
+
+    <!-- View Details Modal -->
     <div id="detailModal" class="modal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeModal()">×</button>
@@ -583,57 +492,107 @@
         </div>
     </div>
 
-
-
-
-
-    
-<!-- Modal for Editing Sub-Admin -->
+    <!-- Edit Admin Modal -->
     <div id="editAdminModal" class="modal">
         <div class="modal-content">
             <button class="modal-close" onclick="closeEditAdminModal()">×</button>
             <h2 style="color:#2563eb;margin-top:0">⚙️ Edit Sub-Admin</h2>
-            
             <form id="editAdminForm" style="display:grid;gap:1rem">
                 <input type="hidden" id="editAdminId">
-                
                 <div class="detail-row" style="margin-bottom:0">
                     <strong>Username:</strong> <span id="editAdminUsername" style="color:#4b5563"></span>
                 </div>
-                
                 <div style="background:#f9fafb; padding:1rem; border-radius:8px; border: 1px solid #e5e7eb;">
                     <label style="font-weight:600;display:block;margin-bottom:0.5rem;color:#1f2937">🔑 Reset Password (Optional)</label>
-                    <small style="color:#6b7280; display:block; margin-bottom:0.5rem;">Leave blank to keep the current password.</small>
+                    <small style="color:#6b7280; display:block; margin-bottom:0.5rem;">Leave blank to keep current password.</small>
                     <input type="text" id="editAdminPassword" placeholder="Enter new password..." style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
                 </div>
-
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.5rem;color:#1f2937">🛡️ Update Permissions:</label>
                     <div id="editPermCheckboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem"></div>
                 </div>
-                
                 <button type="submit" class="btn btn-primary" style="justify-self:start; margin-top:0.5rem;">Save All Changes</button>
                 <div id="editAdminMsg" style="margin-top:0.5rem"></div>
             </form>
         </div>
     </div>
-    
 
-
-<div id="pwdModal" class="lightbox">
-    <div style="background:white;padding:2rem;border-radius:12px;max-width:400px;width:90%">
-        <h3 style="color:#2563eb;margin-top:0">🔑 Change Password</h3>
-        <input type="password" id="currentPwd" placeholder="Current Password" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;box-sizing:border-box">
-        <input type="password" id="newPwd" placeholder="New Password (min 6 chars)" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;box-sizing:border-box">
-        <input type="password" id="confirmPwd" placeholder="Confirm New Password" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:1rem;box-sizing:border-box">
-        <div style="display:flex;gap:0.5rem">
-            <button onclick="submitChangePassword()" class="btn btn-primary">Update</button>
-            <button onclick="closeChangePassword()" class="btn" style="background:#6b7280;color:white">Cancel</button>
+    <!-- Change Password Modal -->
+    <div id="pwdModal" class="modal">
+        <div class="modal-content" style="max-width:400px;">
+            <h3 style="color:#2563eb;margin-top:0">🔑 Change Password</h3>
+            <input type="password" id="currentPwd" placeholder="Current Password" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;box-sizing:border-box">
+            <input type="password" id="newPwd" placeholder="New Password (min 6 chars)" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;box-sizing:border-box">
+            <input type="password" id="confirmPwd" placeholder="Confirm New Password" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:1rem;box-sizing:border-box">
+            <div style="display:flex;gap:0.5rem">
+                <button onclick="submitChangePassword()" class="btn btn-primary">Update</button>
+                <button onclick="closeChangePassword()" class="btn" style="background:#6b7280;color:white">Cancel</button>
+            </div>
+            <div id="pwdMsg" style="margin-top:1rem"></div>
         </div>
-        <div id="pwdMsg" style="margin-top:1rem"></div>
     </div>
-</div>
 
-<script src="js/admin.js"></script>
+    <!-- Edit Student Modal -->
+    <div id="editStudentModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="document.getElementById('editStudentModal').classList.remove('active')">×</button>
+            <h2 style="color:#2563eb;margin-top:0">✏️ Edit Student Details</h2>
+            <form id="editStudentForm" style="display:grid;gap:1rem">
+                <input type="hidden" id="editStudentId">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:0.3rem">Student Name *</label>
+                        <input type="text" id="editStudentName" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:0.3rem">Roll Number *</label>
+                        <input type="text" id="editStudentRoll" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:0.3rem">Class *</label>
+                        <input type="text" id="editStudentClass" required style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:0.3rem">Section</label>
+                        <input type="text" id="editStudentSection" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:0.3rem">Parent Name</label>
+                        <input type="text" id="editStudentParent" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:0.3rem">Phone</label>
+                        <input type="text" id="editStudentPhone" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="justify-self:start;margin-top:0.5rem">Save Changes</button>
+                <div id="editStudentMsg" style="margin-top:0.5rem"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reset Student Password Modal -->
+    <div id="resetStudentPwdModal" class="modal">
+        <div class="modal-content" style="max-width:400px;">
+            <button class="modal-close" onclick="document.getElementById('resetStudentPwdModal').classList.remove('active')">×</button>
+            <h2 style="color:#ef4444;margin-top:0">🔑 Reset Password</h2>
+            <p style="color:#6b7280;margin-bottom:1rem;">Setting new password for: <strong id="resetPwdStudentName"></strong></p>
+            <form id="resetStudentPwdForm" style="display:grid;gap:1rem">
+                <input type="hidden" id="resetPwdStudentId">
+                <div>
+                    <label style="font-weight:600;display:block;margin-bottom:0.3rem">New Password *</label>
+                    <input type="text" id="newStudentPassword" required placeholder="Enter new password..." style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                </div>
+                <button type="submit" class="btn" style="background:#ef4444;color:white;justify-self:start;">Confirm Reset</button>
+                <div id="resetStudentPwdMsg" style="margin-top:0.5rem"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
 </body>
 </html>
