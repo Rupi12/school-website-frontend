@@ -247,7 +247,10 @@ function showTab(tab, btn) {
     document.getElementById('documents-tab').classList.toggle('hidden', tab !== 'documents');
     document.getElementById('students-tab').classList.toggle('hidden', tab !== 'students');
     document.getElementById('admins-tab').classList.toggle('hidden', tab !== 'admins');
-
+    document.getElementById('audit-tab')?.classList.toggle('hidden', tab !== 'audit');
+    
+    
+    if (tab === 'audit') loadAudit(1);
     if (tab === 'students') { loadStudentsAdmin(); loadClasses(); loadBulkClasses(); }
     if (tab === 'documents') loadDocsAdmin();
     if (tab === 'gallery') loadGalleryAdmin();
@@ -256,7 +259,7 @@ function showTab(tab, btn) {
 
     const searchBar = document.querySelector('.search-bar');
     if (searchBar) {
-        searchBar.style.display = (tab === 'gallery' || tab === 'news' || tab === 'documents' || tab === 'students') ? 'none' : 'flex';
+        searchBar.style.display = (tab === 'gallery' || tab === 'news' || tab === 'documents' || tab === 'students'|| tab === 'admins' || tab === 'audit') ? 'none' : 'flex';
     }
 
     const searchInput = document.getElementById('searchInput');
@@ -676,11 +679,16 @@ let classStudents = [];
 async function loadClassStudents() {
     const cls = document.getElementById('manageClass').value;
     const search = document.getElementById('studentSearch');
-    const sel = document.getElementById('selectStudent');
+    const checklist = document.getElementById('studentChecklist');
+    const selectAllWrap = document.getElementById('selectAllWrap');
+
     if (!cls) {
         search.disabled = true;
-        sel.style.display = 'none';
+        checklist.style.display = 'none';
+        selectAllWrap.style.display = 'none';
         document.getElementById('manageActions').style.display = 'none';
+        document.getElementById('manageForms').innerHTML = '';
+        document.getElementById('selectionInfo').textContent = '';
         return;
     }
     const res = await fetch(`${STUDENT_ADMIN}/students/class/${cls}`, { headers });
@@ -688,28 +696,30 @@ async function loadClassStudents() {
     classStudents = data.students;
     search.disabled = false;
     search.value = '';
-    renderStudentOptions(classStudents);
-    sel.style.display = 'block';
+    renderStudentChecklist(classStudents);
+    checklist.style.display = 'block';
+    selectAllWrap.style.display = 'block';
 }
 
-function renderStudentOptions(students) {
-    const sel = document.getElementById('selectStudent');
-    sel.innerHTML = students.map(s =>
-        `<option value="${s._id}">${escapeHtml(s.rollNumber)} - ${escapeHtml(s.name)} ${s.section ? '('+s.section+')' : ''}</option>`
-    ).join('');
+function renderStudentChecklist(students) {
+    const checklist = document.getElementById('studentChecklist');
+    checklist.innerHTML = students.map(s => `
+        <label style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem;border-bottom:1px solid #f3f4f6;cursor:pointer;border-radius:6px" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='transparent'">
+            <input type="checkbox" class="manage-student-cb" value="${s._id}" data-name="${escapeHtml(s.name)}" onchange="onSelectionChange()" style="width:16px;height:16px;accent-color:#2563eb">
+            <strong style="color:#1f2937">${escapeHtml(s.rollNumber)}</strong> 
+            <span style="color:#4b5563">- ${escapeHtml(s.name)} ${s.section ? '('+escapeHtml(s.section)+')' : ''}</span>
+        </label>
+    `).join('');
+    onSelectionChange();
 }
 
 function filterStudentList() {
     const term = document.getElementById('studentSearch').value.toLowerCase();
     const filtered = classStudents.filter(s => s.name.toLowerCase().includes(term) || s.rollNumber.toLowerCase().includes(term));
-    renderStudentOptions(filtered);
+    renderStudentChecklist(filtered);
 }
 
-function onStudentSelect() {
-    const val = document.getElementById('selectStudent').value;
-    document.getElementById('manageActions').style.display = val ? 'flex' : 'none';
-    document.getElementById('manageForms').innerHTML = '';
-}
+
 
 function getSelectedStudent() {
     return document.getElementById('selectStudent').value;
@@ -744,12 +754,27 @@ function showManage(type) {
         `;
         addSubjectRow();
     } else if (type === 'fee') {
+        const cy = new Date().getFullYear();
+        const years = [`${cy-1}-${String(cy).slice(2)}`, `${cy}-${String(cy+1).slice(2)}`];
         container.innerHTML = `
-            <h4>Add Fee</h4>
-            <input id="feeType" placeholder="Fee Type" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;margin-right:0.5rem">
-            <input id="feeAmount" type="number" placeholder="Amount" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;margin-right:0.5rem">
-            <input id="feeDue" type="date" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
-            <button class="btn btn-primary" style="margin-left:0.5rem" onclick="saveFee('${sid}')">Add</button>
+            <h4>Add Fee Due</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+                <select id="feeAcademicYear" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                    ${years.map(y => `<option>${y}</option>`).join('')}
+                    <option>Previous Years</option>
+                </select>
+                <select id="feeCategory" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                    <option>Tuition</option><option>Transport</option><option>Exam</option>
+                    <option>Annual</option><option>Trip</option><option>Library</option>
+                    <option>Previous Balance</option><option>Other</option>
+                </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+                <input id="feeType" placeholder="Description (e.g. Term 1)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                <input id="feeAmount" type="number" placeholder="Total Amount ₹" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+            </div>
+            <input id="feeDue" type="date" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem">
+            <button class="btn btn-primary" onclick="saveFee('${sid}')">Add Due</button>
         `;
     } else if (type === 'doc') {
         container.innerHTML = `
@@ -803,17 +828,23 @@ async function saveResult(sid) {
 }
 
 async function saveFee(sid) {
+    const feeType = document.getElementById('feeType').value.trim();
+    const amount = document.getElementById('feeAmount').value;
+    if (!feeType || !amount) return alert('Enter description and amount');
+
     const res = await fetch(`${STUDENT_ADMIN}/fees`, {
         method: 'POST', headers,
         body: JSON.stringify({
             studentId: sid,
-            feeType: document.getElementById('feeType').value,
-            amount: document.getElementById('feeAmount').value,
-            dueDate: document.getElementById('feeDue').value
+            academicYear: document.getElementById('feeAcademicYear').value,
+            category: document.getElementById('feeCategory').value,
+            feeType,
+            amount: Number(amount),
+            dueDate: document.getElementById('feeDue').value || null
         })
     });
     const r = await res.json();
-    alert(r.success ? '✅ Fee added' : '❌ ' + r.message);
+    alert(r.success ? '✅ Fee due added' : '❌ ' + r.message);
     if (r.success) document.getElementById('manageForms').innerHTML = '';
 }
 
@@ -836,30 +867,71 @@ async function loadStudentData(sid) {
     try {
         const res = await fetch(`${STUDENT_ADMIN}/student-data/${sid}`, { headers });
         const data = await res.json();
+        if (!data.success) {
+            container.innerHTML = '<p style="color:#991b1b">Failed to load.</p>';
+            return;
+        }
         container.innerHTML = `
             <h4>📊 Results</h4>
             ${data.results.length ? data.results.map(r => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem;background:#f9fafb;border-radius:8px;margin-bottom:0.4rem">
                     <span>${escapeHtml(r.examName)} - ${escapeHtml(r.term || '')} ${escapeHtml(r.academicYear || '')}</span>
-                    <button class="action-btn btn-delete" onclick="deleteResult('${r._id}','${sid}')">Delete</button>
+                    <span style="display:flex;gap:0.3rem">
+                        <button class="action-btn btn-view" onclick="editResult('${r._id}','${sid}')">✏️ Edit</button>
+                        <button class="action-btn btn-delete" onclick="deleteResult('${r._id}','${sid}')">Delete</button>
+                    </span>
                 </div>
             `).join('') : '<p style="color:#6b7280">No results</p>'}
+
             <h4 style="margin-top:1rem">💰 Fees</h4>
-            ${data.fees.length ? data.fees.map(f => `
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem;background:#f9fafb;border-radius:8px;margin-bottom:0.4rem">
-                    <span>${escapeHtml(f.feeType)} - ₹${f.amount} (${f.status})</span>
-                    <button class="action-btn btn-delete" onclick="deleteFee('${f._id}','${sid}')">Delete</button>
-                </div>
-            `).join('') : '<p style="color:#6b7280">No fees</p>'}
+            ${data.fees.length ? data.fees.map(f => {
+                const totalPaid = f.payments.reduce((s, p) => s + p.amount, 0);
+                const isOverdue = f.dueDate && new Date(f.dueDate) < new Date() && f.status !== 'Paid';
+                const historyHtml = f.payments.length ? `
+                    <div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;font-size:0.82rem">
+                        <strong style="color:#4b5563">Payments:</strong>
+                        ${f.payments.map(p => `
+                            <div style="display:flex;justify-content:space-between;padding:0.2rem 0;color:#374151">
+                                <span>₹${p.amount} | ${escapeHtml(p.mode)} | ${new Date(p.date).toLocaleDateString()} | Rec#${escapeHtml(p.receiptNo)} | by ${escapeHtml(p.collectedBy)}</span>
+                                <button onclick="deletePayment('${f._id}','${p._id}','${sid}')" style="background:none;border:none;color:#ef4444;cursor:pointer" title="Delete">✖</button>
+                            </div>
+                        `).join('')}
+                    </div>` : '';
+                return `
+                <div style="padding:0.6rem;background:#f9fafb;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid ${f.status==='Paid'?'#10b981':(isOverdue?'#ef4444':'#fbbf24')}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.3rem">
+                        <span>
+                            <strong>${escapeHtml(f.academicYear)}</strong> | <strong>${escapeHtml(f.category)}</strong> - ${escapeHtml(f.feeType)} | 
+                            ₹${totalPaid}/₹${f.amount}
+                            <span class="badge ${f.status==='Paid'?'paid':'pending'}" style="margin-left:0.3rem">${f.status}</span>
+                            ${isOverdue ? '<span style="color:#ef4444;font-weight:600;font-size:0.85rem"> ⚠️ Overdue</span>' : ''}
+                        </span>
+                        <span style="display:flex;gap:0.3rem;flex-wrap:wrap">
+                            <button class="action-btn btn-view" onclick="editFee('${f._id}','${escapeHtml(f.feeType)}',${f.amount},'${escapeHtml(f.category)}','${escapeHtml(f.academicYear)}','${sid}')">✏️ Edit</button>
+                            ${f.status !== 'Paid' ? `<button class="action-btn btn-view" onclick="recordPayment('${f._id}',${f.amount},${totalPaid},'${sid}')">💵 Pay</button>` : ''}
+                            <button class="action-btn btn-delete" onclick="deleteFee('${f._id}','${sid}')">Delete</button>
+                        </span>
+                    </div>
+                    ${historyHtml}
+                </div>`;
+            }).join('') : '<p style="color:#6b7280">No fees</p>'}
+
             <h4 style="margin-top:1rem">📄 Documents</h4>
             ${data.documents.length ? data.documents.map(d => `
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem;background:#f9fafb;border-radius:8px;margin-bottom:0.4rem">
                     <span>${escapeHtml(d.title)}</span>
-                    <button class="action-btn btn-delete" onclick="deleteStudentDoc('${d._id}','${sid}')">Delete</button>
+                    <span style="display:flex;gap:0.3rem;align-items:center">
+                        <button class="action-btn btn-view" onclick="editDoc('${d._id}','${sid}')">✏️ Edit</button>
+                        <a href="${d.fileUrl}" target="_blank" class="action-btn btn-view" style="padding:0.4rem 0.8rem;font-size:0.85rem;text-decoration:none">View</a>
+                        <button class="action-btn btn-delete" onclick="deleteStudentDoc('${d._id}','${sid}')">Delete</button>
+                    </span>
                 </div>
             `).join('') : '<p style="color:#6b7280">No documents</p>'}
         `;
-    } catch (e) { container.innerHTML = '<p>Error loading data.</p>'; }
+    } catch (e) {
+        console.error('loadStudentData error:', e);
+        container.innerHTML = '<p>Error loading data.</p>';
+    }
 }
 
 async function deleteResult(id, sid) {
@@ -1036,16 +1108,26 @@ function applyTabPermissions() {
         const match = onclick.match(/showTab\('(\w+)'/);
         if (!match) return;
         const tab = match[1];
-
+        if (tab === 'audit') {
+            btn.style.display = myRole === 'superadmin' ? '' : 'none';
+            return;
+}
         if (tab === 'admins') {
             btn.style.display = myRole === 'superadmin' ? '' : 'none';
             return;
         }
+
+        if (tab === 'audit') {
+    btn.style.display = myRole === 'superadmin' ? '' : 'none';
+    return;
+}
         const req = tabMap[tab];
         if (!req) return;
         const allowed = Array.isArray(req) ? req.some(p => hasPermission(p)) : hasPermission(req);
         btn.style.display = allowed ? '' : 'none';
     });
+
+    
 
     // Auto-open first visible tab
     const firstVisible = [...document.querySelectorAll('.tab-btn')].find(b => b.style.display !== 'none');
@@ -1445,6 +1527,370 @@ window.exportStudents = function() {
     URL.revokeObjectURL(url);
 };
 
+
+
+
+function recordPayment(feeId, amount, paidSoFar, sid) {
+    const pending = amount - paidSoFar;
+    const payAmount = prompt(`Amount paying now (Pending: ₹${pending}):`, pending);
+    if (payAmount === null || !payAmount.trim()) return;
+    const mode = prompt('Mode (Cash/Online/Cheque/Bank Transfer):', 'Cash');
+    if (mode === null) return;
+    const receiptNo = prompt('Receipt Number (required):', '');
+    if (!receiptNo) return alert('Receipt number required');
+    const collectedBy = prompt('Collected By (name):', adminInfo.username);
+    if (collectedBy === null) return;
+    const date = prompt('Payment Date (YYYY-MM-DD) or empty for today:', new Date().toISOString().split('T')[0]);
+    if (date === null) return;
+
+    fetch(`${STUDENT_ADMIN}/fees/${feeId}/pay`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ amount: payAmount, mode, receiptNo, collectedBy, date: date || null })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) loadStudentData(sid);
+        else alert('❌ ' + result.message);
+    });
+}
+
+function editFee(feeId, feeType, amount, category, academicYear, sid) {
+    const newYear = prompt('Academic Year:', academicYear);
+    if (newYear === null) return;
+    const newType = prompt('Description:', feeType);
+    if (newType === null) return;
+    const newAmount = prompt('Total Amount ₹:', amount);
+    if (newAmount === null) return;
+    const newCategory = prompt('Category:', category);
+    if (newCategory === null) return;
+
+    fetch(`${STUDENT_ADMIN}/fees/${feeId}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ academicYear: newYear, feeType: newType, amount: Number(newAmount), category: newCategory })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) loadStudentData(sid);
+        else alert('❌ ' + result.message);
+    });
+}
+
+async function deletePayment(feeId, paymentId, sid) {
+    if (!confirm('Delete this payment? Fee status will revert.')) return;
+    await fetch(`${STUDENT_ADMIN}/fees/${feeId}/pay/${paymentId}`, { method: 'DELETE', headers });
+    loadStudentData(sid);
+}
+
+
+async function editResult(resultId, sid) {
+    const container = document.getElementById('manageForms');
+    container.innerHTML = '<p>Loading result...</p>';
+    
+    // Fetch current result
+    const res = await fetch(`${STUDENT_ADMIN}/results/${resultId}`, { headers });
+    const data = await res.json();
+    const r = data.result;
+    
+    const cy = new Date().getFullYear();
+    const years = [`${cy-1}-${String(cy).slice(2)}`, `${cy}-${String(cy+1).slice(2)}`];
+    
+    container.innerHTML = `
+        <h4>✏️ Edit Result</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+            <input id="editExamName" placeholder="Exam Name *" value="${escapeHtml(r.examName)}" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+            <input id="editExamDate" type="date" value="${r.examDate ? r.examDate.split('T')[0] : ''}" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.8rem">
+            <select id="editExamTerm" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                ${['Term 1','Term 2','Annual','Unit Test','Other'].map(t => `<option ${r.term===t?'selected':''}>${t}</option>`).join('')}
+            </select>
+            <select id="editAcademicYear" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                ${years.map(y => `<option ${r.academicYear===y?'selected':''}>${y}</option>`).join('')}
+            </select>
+        </div>
+        <div id="editSubjectRows">
+            ${r.subjects.map(s => `
+                <div class="subject-row" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:0.5rem;margin-bottom:0.5rem">
+                    <input class="subj-name" value="${escapeHtml(s.subject)}" placeholder="Subject" style="padding:0.5rem;border:2px solid #e5e7eb;border-radius:6px">
+                    <input class="subj-obt" type="number" value="${s.marksObtained}" placeholder="Marks" style="padding:0.5rem;border:2px solid #e5e7eb;border-radius:6px">
+                    <input class="subj-total" type="number" value="${s.totalMarks}" placeholder="Total" style="padding:0.5rem;border:2px solid #e5e7eb;border-radius:6px">
+                    <button onclick="this.parentElement.remove()" style="background:#ef4444;color:white;border:none;border-radius:6px;cursor:pointer;padding:0 0.8rem">×</button>
+                </div>
+            `).join('')}
+        </div>
+        <button class="sd-mini-btn" onclick="addSubjectRow()" style="margin:0.5rem 0">+ Add Subject</button><br>
+        <input id="editExamRemark" placeholder="Teacher's Remark" value="${escapeHtml(r.remark || '')}" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;margin:0.5rem 0">
+        <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+            <button class="btn btn-primary" onclick="saveEditResult('${resultId}','${sid}')">Save Changes</button>
+            <button class="btn" style="background:#6b7280;color:white" onclick="loadStudentData('${sid}')">Cancel</button>
+        </div>
+        <div id="editResultMsg" style="margin-top:0.5rem"></div>
+    `;
+}
+
+async function saveEditResult(resultId, sid) {
+    const subjects = [];
+    document.querySelectorAll('.subject-row').forEach(row => {
+        const name = row.querySelector('.subj-name').value;
+        const obt = row.querySelector('.subj-obt').value;
+        const total = row.querySelector('.subj-total').value;
+        if (name && obt !== '' && total !== '') {
+            subjects.push({ subject: name, marksObtained: Number(obt), totalMarks: Number(total) });
+        }
+    });
+    if (subjects.length === 0) return alert('Add at least one subject');
+    const examName = document.getElementById('editExamName').value.trim();
+    if (!examName) return alert('Enter exam name');
+
+    const msg = document.getElementById('editResultMsg');
+    const res = await fetch(`${STUDENT_ADMIN}/results/${resultId}`, {
+        method: 'PUT', headers,
+        body: JSON.stringify({
+            examName,
+            term: document.getElementById('editExamTerm').value,
+            academicYear: document.getElementById('editAcademicYear').value,
+            examDate: document.getElementById('editExamDate').value || null,
+            subjects,
+            remark: document.getElementById('editExamRemark').value
+        })
+    });
+    const r = await res.json();
+    if (r.success) {
+        msg.innerHTML = '<span style="color:#065f46">✅ Result updated!</span>';
+        setTimeout(() => loadStudentData(sid), 1000);
+    } else {
+        msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`;
+    }
+}
+
+
+async function editDoc(docId, sid) {
+    const container = document.getElementById('manageForms');
+    container.innerHTML = '<p>Loading document...</p>';
+
+    const res = await fetch(`${STUDENT_ADMIN}/documents/${docId}`, { headers });
+    const data = await res.json();
+    const d = data.document;
+
+    container.innerHTML = `
+        <h4>✏️ Edit Document</h4>
+        <div style="margin-bottom:0.8rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.3rem">Title *</label>
+            <input id="editDocTitle" value="${escapeHtml(d.title)}" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+        </div>
+        <div style="margin-bottom:0.8rem">
+            <label style="font-weight:600;display:block;margin-bottom:0.3rem">Replace File (optional)</label>
+            <input type="file" id="editDocFile" accept=".pdf" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;background:white">
+            <small style="color:#6b7280">Leave empty to keep existing file</small>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+            <button class="btn btn-primary" onclick="saveEditDoc('${docId}','${sid}')">Save Changes</button>
+            <button class="btn" style="background:#6b7280;color:white" onclick="loadStudentData('${sid}')">Cancel</button>
+        </div>
+        <div id="editDocMsg" style="margin-top:0.5rem"></div>
+    `;
+}
+
+async function saveEditDoc(docId, sid) {
+    const msg = document.getElementById('editDocMsg');
+    const title = document.getElementById('editDocTitle').value.trim();
+    if (!title) return alert('Enter title');
+
+    const file = document.getElementById('editDocFile').files[0];
+
+    if (file) {
+        // Replace file
+        const fd = new FormData();
+        fd.append('title', title);
+        fd.append('file', file);
+        const res = await fetch(`${STUDENT_ADMIN}/documents/${docId}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: fd
+        });
+        const r = await res.json();
+        if (r.success) {
+            msg.innerHTML = '<span style="color:#065f46">✅ Updated!</span>';
+            setTimeout(() => loadStudentData(sid), 1000);
+        } else {
+            msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`;
+        }
+    } else {
+        // Title only
+        const res = await fetch(`${STUDENT_ADMIN}/documents/${docId}`, {
+            method: 'PUT', headers,
+            body: JSON.stringify({ title })
+        });
+        const r = await res.json();
+        if (r.success) {
+            msg.innerHTML = '<span style="color:#065f46">✅ Updated!</span>';
+            setTimeout(() => loadStudentData(sid), 1000);
+        } else {
+            msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`;
+        }
+    }
+}
+
+
+function showBulkFeeForm() {
+    if (classStudents.length === 0) return alert('No students in this class');
+    const container = document.getElementById('manageForms');
+    const cy = new Date().getFullYear();
+    const years = [`${cy-1}-${String(cy).slice(2)}`, `${cy}-${String(cy+1).slice(2)}`, 'Previous Years'];
+
+    container.innerHTML = `
+        <h4 style="color:#2563eb">💰 Bulk Assign Fee to Class</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+            <select id="bfYear" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
+                ${years.map(y => `<option>${y}</option>`).join('')}
+            </select>
+            <select id="bfCategory" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
+                <option>Tuition</option><option>Transport</option><option>Exam</option>
+                <option>Annual</option><option>Trip</option><option>Library</option><option>Other</option>
+            </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+            <input id="bfType" placeholder="Description (e.g. Annual Fee)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
+            <input id="bfAmount" type="number" placeholder="Amount ₹" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
+        </div>
+        
+        
+        
+<input id="bfDue" type="date" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;font-family:inherit">
+
+        <p style="color:#6b7280;font-size:0.9rem;margin-bottom:0.8rem">This will be assigned to all <strong>${classStudents.length}</strong> students selected above.</p>
+
+        <button class="btn btn-primary" onclick="submitBulkFee()">Assign to Selected Students</button>
+        <div id="bfMsg" style="margin-top:0.8rem"></div>
+    `;
+}
+
+
+async function submitBulkFee() {
+    const feeType = document.getElementById('bfType').value.trim();
+    const amount = document.getElementById('bfAmount').value;
+    const msg = document.getElementById('bfMsg');
+
+    if (!feeType || !amount) {
+        msg.innerHTML = '<span style="color:#991b1b">❌ Enter description and amount</span>';
+        return;
+    }
+
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    if (selectedIds.length === 0) {
+        msg.innerHTML = '<span style="color:#991b1b">❌ Select at least one student</span>';
+        return;
+    }
+
+    if (!confirm(`Assign "${feeType}" ₹${amount} to ${selectedIds.length} students?`)) return;
+
+    const feeData = {
+        academicYear: document.getElementById('bfYear').value,
+        category: document.getElementById('bfCategory').value,
+        feeType,
+        amount: Number(amount),
+        dueDate: document.getElementById('bfDue').value || null
+    };
+
+    msg.innerHTML = '<span style="color:#2563eb">⏳ Assigning...</span>';
+
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/fees/bulk-selected`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ studentIds: selectedIds, ...feeData })
+        });
+        const r = await res.json();
+        if (r.success) {
+            msg.innerHTML = `<span style="color:#065f46">✅ ${r.message}</span>`;
+            setTimeout(() => document.getElementById('manageForms').innerHTML = '', 2000);
+        } else {
+            msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`;
+        }
+    } catch (e) {
+        msg.innerHTML = '<span style="color:#991b1b">❌ Server error</span>';
+    }
+}
+
+
+function toggleAllManage(checked) {
+    document.querySelectorAll('.manage-student-cb').forEach(cb => cb.checked = checked);
+    onSelectionChange();
+}
+
+function onSelectionChange() {
+    const selected = [...document.querySelectorAll('.manage-student-cb:checked')];
+    const count = selected.length;
+    const actions = document.getElementById('manageActions');
+    const info = document.getElementById('selectionInfo');
+    const forms = document.getElementById('manageForms');
+
+    if (count === 0) {
+        actions.style.display = 'none';
+        info.textContent = '';
+        forms.innerHTML = '';
+        return;
+    }
+
+    info.textContent = `${count} student(s) selected`;
+    actions.style.display = 'flex';
+
+    if (count === 1) {
+        // Individual actions
+        actions.innerHTML = `
+            <button class="sd-mini-btn" onclick="showManage('result')">📊 Add Result</button>
+            <button class="sd-mini-btn" onclick="showManage('fee')">💰 Add Fee</button>
+            <button class="sd-mini-btn" onclick="showManage('doc')">📄 Upload Doc</button>
+            <button class="sd-mini-btn" onclick="showManage('view')">👁️ View/Delete Data</button>
+        `;
+    } else {
+        // Bulk actions only
+        actions.innerHTML = `
+            <button class="sd-mini-btn" onclick="showBulkFeeForm()">💰 Bulk Assign Fee</button>
+        `;
+        forms.innerHTML = '';
+    }
+}
+
+function getSelectedStudent() {
+    const checked = document.querySelector('.manage-student-cb:checked');
+    return checked ? checked.value : '';
+}
+
+function getSelectedStudents() {
+    return [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+}
+
+
+
+let auditPage = 1;
+async function loadAudit(page = 1) {
+    auditPage = page;
+    const search = document.getElementById('auditSearch').value;
+    const category = document.getElementById('auditCategory').value;
+    const params = new URLSearchParams({ page, ...(search && { search }), ...(category && { category }) });
+    try {
+        const res = await fetch(`${API_URL}/audit?${params}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        const tbody = document.getElementById('auditTable');
+        const icons = { FEE: '💰', STUDENT: '🎓', ADMIN: '🔐', AUTH: '🔑' };
+        tbody.innerHTML = data.logs.length ? data.logs.map(l => `
+            <tr>
+                <td><small>${new Date(l.createdAt).toLocaleString()}</small></td>
+                <td><strong>${escapeHtml(l.actorName)}</strong>${l.actorRole==='superadmin'?' ⭐':''}</td>
+                <td>${escapeHtml(l.action)}</td>
+                <td>${escapeHtml(l.targetName || '-')}</td>
+                <td>${icons[l.category]||''} ${escapeHtml(l.category)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="empty-state">No logs found</td></tr>';
+
+        document.getElementById('auditPagination').innerHTML = data.pages > 1 ? `
+            <button class="sd-mini-btn" ${page===1?'disabled':''} onclick="loadAudit(${page-1})">‹ Prev</button>
+            <span style="padding:0.6rem">Page ${page} of ${data.pages}</span>
+            <button class="sd-mini-btn" ${page===data.pages?'disabled':''} onclick="loadAudit(${page+1})">Next ›</button>
+        ` : '';
+    } catch (e) { console.error(e); }
+}
 
 // Run on load
 renderPermCheckboxes();
