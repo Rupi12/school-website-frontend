@@ -89,9 +89,6 @@ function renderResults() {
 }
 
 
-
-
-
 let allAttendance = [];
 
 async function loadAttendance() {

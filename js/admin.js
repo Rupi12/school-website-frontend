@@ -248,10 +248,14 @@ function showTab(tab, btn) {
     document.getElementById('students-tab').classList.toggle('hidden', tab !== 'students');
     document.getElementById('admins-tab').classList.toggle('hidden', tab !== 'admins');
     document.getElementById('audit-tab')?.classList.toggle('hidden', tab !== 'audit');
+    document.getElementById('report-tab')?.classList.toggle('hidden', tab !== 'report');
     
+    // in if-chain:
+   if (tab === 'report') { loadReport(); loadPendingSummary(); loadDefaulters(); loadDefaulterClasses(); }
+        
     
     if (tab === 'audit') loadAudit(1);
-    if (tab === 'students') { loadStudentsAdmin(); loadClasses(); loadBulkClasses(); }
+    if (tab === 'students') { loadStudentsAdmin(); loadClasses(); }
     if (tab === 'documents') loadDocsAdmin();
     if (tab === 'gallery') loadGalleryAdmin();
     if (tab === 'news') loadNewsAdmin();
@@ -259,7 +263,7 @@ function showTab(tab, btn) {
 
     const searchBar = document.querySelector('.search-bar');
     if (searchBar) {
-        searchBar.style.display = (tab === 'gallery' || tab === 'news' || tab === 'documents' || tab === 'students'|| tab === 'admins' || tab === 'audit') ? 'none' : 'flex';
+        searchBar.style.display = (tab === 'gallery' || tab === 'news' || tab === 'documents' || tab === 'students'|| tab === 'admins' || tab === 'audit' || tab === 'report') ? 'none' : 'flex';
     }
 
     const searchInput = document.getElementById('searchInput');
@@ -689,6 +693,8 @@ async function loadClassStudents() {
         document.getElementById('manageActions').style.display = 'none';
         document.getElementById('manageForms').innerHTML = '';
         document.getElementById('selectionInfo').textContent = '';
+        const ca = document.getElementById('classLevelActions');   // 👈 add
+        if (ca) ca.style.display = 'none';                          // 👈 add
         return;
     }
     const res = await fetch(`${STUDENT_ADMIN}/students/class/${cls}`, { headers });
@@ -699,7 +705,19 @@ async function loadClassStudents() {
     renderStudentChecklist(classStudents);
     checklist.style.display = 'block';
     selectAllWrap.style.display = 'block';
+    // Show class-level Timetable button
+    const classActions = document.getElementById('classLevelActions');
+    if (classActions) {
+        const selectedCls = document.getElementById('manageClass').value;
+        classActions.innerHTML = `
+            <button class="sd-mini-btn" onclick="showTimetableForm()">🗓️ Set Timetable for Class ${escapeHtml(selectedCls)}</button>
+        `;
+        classActions.style.display = 'block';
+    }
 }
+
+
+
 
 function renderStudentChecklist(students) {
     const checklist = document.getElementById('studentChecklist');
@@ -783,6 +801,23 @@ function showManage(type) {
             <input type="file" id="docFile" accept=".pdf" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
             <button class="btn btn-primary" style="margin-top:0.5rem" onclick="saveDoc('${sid}')">Upload</button>
         `;
+    
+    } else if (type === 'attendance') {
+        const today = new Date().toISOString().split('T')[0];
+        container.innerHTML = `
+            <h4>📅 Mark Attendance</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.8rem">
+                <input id="attDate" type="date" value="${today}" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                <select id="attStatus" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                    <option value="Present">Present</option>
+                    <option value="Absent">Absent</option>
+                    <option value="Leave">Leave</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="saveAttendance('${sid}')">Save Attendance</button>
+            <div id="attMsg" style="margin-top:0.5rem"></div>
+        `;
+
     } else if (type === 'view') {
         loadStudentData(sid);
     }
@@ -826,6 +861,26 @@ async function saveResult(sid) {
     alert(r.success ? '✅ Result saved' : '❌ ' + r.message);
     if (r.success) document.getElementById('manageForms').innerHTML = '';
 }
+
+
+async function saveAttendance(sid) {
+    const date = document.getElementById('attDate').value;
+    const status = document.getElementById('attStatus').value;
+    const msg = document.getElementById('attMsg');
+    if (!date) return alert('Select a date');
+    const res = await fetch(`${STUDENT_ADMIN}/attendance`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ studentId: sid, date, status })
+    });
+    const r = await res.json();
+    if (r.success) {
+        msg.innerHTML = `<span style="color:#065f46">✅ ${r.message}</span>`;
+        setTimeout(() => document.getElementById('manageForms').innerHTML = '', 1500);
+    } else {
+        msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`;
+    }
+}
+
 
 async function saveFee(sid) {
     const feeType = document.getElementById('feeType').value.trim();
@@ -893,7 +948,9 @@ async function loadStudentData(sid) {
                         ${f.payments.map(p => `
                             <div style="display:flex;justify-content:space-between;padding:0.2rem 0;color:#374151">
                                 <span>₹${p.amount} | ${escapeHtml(p.mode)} | ${new Date(p.date).toLocaleDateString()} | Rec#${escapeHtml(p.receiptNo)} | by ${escapeHtml(p.collectedBy)}</span>
+                               
                                 <button onclick="deletePayment('${f._id}','${p._id}','${sid}')" style="background:none;border:none;color:#ef4444;cursor:pointer" title="Delete">✖</button>
+                                <button type="button" onclick="downloadReceipt('${escapeHtml(p.receiptNo)}')" style="background:#1a2a4f;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:0.75rem;cursor:pointer;margin-right:6px" title="Download Receipt">Receipt</button>
                             </div>
                         `).join('')}
                     </div>` : '';
@@ -955,6 +1012,52 @@ async function deleteStudentDoc(id, sid) {
 // ---- Timetable ----
 let timetableSchedule = [];
 
+
+function showTimetableForm() {
+    const cls = document.getElementById('manageClass').value;
+    if (!cls) return alert('Select a class first');
+
+    timetableSchedule = [];   // reset
+    const container = document.getElementById('manageForms');
+    container.innerHTML = `
+        <h4 style="color:#2563eb">🗓️ Set Timetable — Class ${escapeHtml(cls)}</h4>
+        <div style="margin-bottom:0.8rem">
+            <input type="text" id="ttSection" placeholder="Section (optional)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
+        </div>
+        <select id="ttDay" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;font-family:inherit">
+            <option value="">Select Day...</option>
+            <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+            <option>Thursday</option><option>Friday</option><option>Saturday</option>
+        </select>
+        <div id="periodRows"></div>
+        <button class="sd-mini-btn" onclick="addPeriodRow()" style="margin:0.5rem 0">+ Add Period</button><br>
+        <button class="sd-mini-btn" onclick="addDayToTimetable()" style="background:#10b981">✓ Add This Day</button>
+        <div id="ttPreview" style="margin-top:1rem"></div>
+        <button onclick="saveTimetableNew('${escapeHtml(cls)}')" class="btn btn-primary" style="margin-top:1rem">Save Full Timetable</button>
+        <div id="ttMsg" style="margin-top:1rem"></div>
+    `;
+    renderTimetablePreview();
+}
+
+// New save — uses selected class (no separate ttClass input needed)
+async function saveTimetableNew(cls) {
+    if (timetableSchedule.length === 0) return alert('Add at least one day');
+    const section = document.getElementById('ttSection').value;
+    const res = await fetch(`${STUDENT_ADMIN}/timetable`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ class: cls, section, schedule: timetableSchedule })
+    });
+    const r = await res.json();
+    const msg = document.getElementById('ttMsg');
+    if (r.success) {
+        msg.innerHTML = '<div style="color:#065f46;background:#d1fae5;padding:0.8rem;border-radius:5px">✅ Timetable saved</div>';
+        timetableSchedule = [];
+        setTimeout(() => document.getElementById('manageForms').innerHTML = '', 1800);
+    } else {
+        msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${r.message}</div>`;
+    }
+}
+
 function addPeriodRow() {
     const div = document.createElement('div');
     div.className = 'period-row';
@@ -1010,66 +1113,8 @@ async function saveTimetable() {
     }
 }
 
-// ---- Bulk Attendance ----
-async function loadBulkClasses() {
-    try {
-        const res = await fetch(`${STUDENT_ADMIN}/classes`, { headers });
-        const data = await res.json();
-        const sel = document.getElementById('bulkClass');
-        if (sel) sel.innerHTML = '<option value="">Select Class...</option>' + data.classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
-    } catch (e) { console.error(e); }
-}
 
-let bulkStudents = [];
 
-async function loadBulkAttendance() {
-    const cls = document.getElementById('bulkClass').value;
-    const date = document.getElementById('bulkDate').value;
-    if (!cls || !date) return alert('Select class and date');
-    const res = await fetch(`${STUDENT_ADMIN}/students/class/${cls}`, { headers });
-    const data = await res.json();
-    bulkStudents = data.students;
-    if (bulkStudents.length === 0) {
-        document.getElementById('bulkList').innerHTML = '<p>No students in this class.</p>';
-        return;
-    }
-    const checkRes = await fetch(`${STUDENT_ADMIN}/attendance/check?class=${cls}&date=${date}`, { headers });
-    const checkData = await checkRes.json();
-    const existing = checkData.existing || {};
-    const alreadyMarked = Object.keys(existing).length > 0;
-
-    document.getElementById('bulkList').innerHTML = `
-        ${alreadyMarked ? '<p style="color:#92400e;background:#fef3c7;padding:0.6rem;border-radius:6px">⚠️ Attendance already marked for this date. Submitting will update it.</p>' : ''}
-        <p style="color:#6b7280">All Present by default. Change absentees below.</p>
-        <div style="display:grid;gap:0.5rem">
-            ${bulkStudents.map(s => `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.7rem;background:#f9fafb;border-radius:8px">
-                    <span><strong>${escapeHtml(s.rollNumber)}</strong> - ${escapeHtml(s.name)}</span>
-                    <select id="bulk-${s._id}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px">
-                        <option value="Present" ${(existing[s._id]||'Present')==='Present'?'selected':''}>Present</option>
-                        <option value="Absent" ${existing[s._id]==='Absent'?'selected':''}>Absent</option>
-                        <option value="Leave" ${existing[s._id]==='Leave'?'selected':''}>Leave</option>
-                    </select>
-                </div>
-            `).join('')}
-        </div>
-        <button class="btn btn-primary" style="margin-top:1rem" onclick="submitBulkAttendance('${date}')">Submit Attendance</button>
-    `;
-}
-
-async function submitBulkAttendance(date) {
-    const records = bulkStudents.map(s => ({ studentId: s._id, status: document.getElementById(`bulk-${s._id}`).value }));
-    const res = await fetch(`${STUDENT_ADMIN}/attendance/bulk`, { method: 'POST', headers, body: JSON.stringify({ date, records }) });
-    const r = await res.json();
-    const msg = document.getElementById('bulkMsg');
-    if (r.success) {
-        msg.innerHTML = `<div style="color:#065f46;background:#d1fae5;padding:0.8rem;border-radius:5px">✅ ${r.message}</div>`;
-        document.getElementById('bulkList').innerHTML = '';
-    } else {
-        msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${r.message}</div>`;
-    }
-    setTimeout(() => msg.innerHTML = '', 4000);
-}
 
 
 // ============ PERMISSIONS ============
@@ -1081,8 +1126,6 @@ const ALL_PERMISSIONS = [
     { key: 'documents', label: '📄 Documents' },
     { key: 'students.list', label: '🎓 Student List' },
     { key: 'students.manage', label: '⚙️ Manage Student Data' },
-    { key: 'students.bulk', label: '📅 Bulk Attendance' },
-    { key: 'students.timetable', label: '🗓️ Timetable' }
 ];
 
 const myRole = adminInfo.role || 'admin';
@@ -1100,7 +1143,7 @@ function applyTabPermissions() {
         'gallery': 'gallery',
         'news': 'news',
         'documents': 'documents',
-        'students': ['students.list','students.manage','students.bulk','students.timetable']
+        'students': ['students.list','students.manage']
     };
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1108,19 +1151,20 @@ function applyTabPermissions() {
         const match = onclick.match(/showTab\('(\w+)'/);
         if (!match) return;
         const tab = match[1];
+        
+        
         if (tab === 'audit') {
             btn.style.display = myRole === 'superadmin' ? '' : 'none';
             return;
-}
+        }
+        if (tab === 'report') {
+            btn.style.display = myRole === 'superadmin' ? '' : 'none';
+            return;
+        }
         if (tab === 'admins') {
             btn.style.display = myRole === 'superadmin' ? '' : 'none';
             return;
         }
-
-        if (tab === 'audit') {
-    btn.style.display = myRole === 'superadmin' ? '' : 'none';
-    return;
-}
         const req = tabMap[tab];
         if (!req) return;
         const allowed = Array.isArray(req) ? req.some(p => hasPermission(p)) : hasPermission(req);
@@ -1732,6 +1776,83 @@ async function saveEditDoc(docId, sid) {
 }
 
 
+function showBulkAttendanceForm() {
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    if (selectedIds.length === 0) return alert('Select students first');
+    const today = new Date().toISOString().split('T')[0];
+    const container = document.getElementById('manageForms');
+    container.innerHTML = `
+        <h4 style="color:#2563eb">📅 Bulk Attendance (${selectedIds.length} students)</h4>
+        <div style="margin-bottom:0.8rem">
+            <input id="bulkAttDate" type="date" value="${today}" onchange="loadBulkAttRows()" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+        </div>
+        <div id="bulkAttRows"></div>
+        <button class="btn btn-primary" style="margin-top:0.8rem" onclick="submitBulkAttendanceNew()">Submit Attendance</button>
+        <div id="bulkAttMsg" style="margin-top:0.5rem"></div>
+    `;
+    loadBulkAttRows();
+}
+
+async function loadBulkAttRows() {
+    const selected = [...document.querySelectorAll('.manage-student-cb:checked')];
+    const date = document.getElementById('bulkAttDate').value;
+    const rows = document.getElementById('bulkAttRows');
+
+    // build students array from selected checkboxes (using classStudents)
+    const students = selected.map(cb => classStudents.find(s => s._id === cb.value)).filter(Boolean);
+
+    // fetch existing attendance for the selected class+date (reuse existing endpoint via class)
+    let existing = {};
+    if (date && students.length) {
+        const cls = students[0].class;
+        try {
+            const res = await fetch(`${STUDENT_ADMIN}/attendance/check?class=${cls}&date=${date}`, { headers });
+            const data = await res.json();
+            existing = data.existing || {};
+        } catch (e) { console.error(e); }
+    }
+    const alreadyMarked = Object.keys(existing).length > 0;
+
+    rows.innerHTML = `
+        ${alreadyMarked ? '<p style="color:#92400e;background:#fef3c7;padding:0.6rem;border-radius:6px;font-size:0.85rem">⚠️ Some already marked for this date. Submitting will update.</p>' : ''}
+        <p style="color:#6b7280;font-size:0.85rem">All Present by default. Change as needed.</p>
+        <div style="display:grid;gap:0.4rem;max-height:300px;overflow-y:auto">
+            ${students.map(s => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.7rem;background:#f9fafb;border-radius:8px">
+                    <span><strong>${escapeHtml(s.rollNumber)}</strong> - ${escapeHtml(s.name)}</span>
+                    <select id="batt-${s._id}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px">
+                        <option value="Present" ${(existing[s._id]||'Present')==='Present'?'selected':''}>Present</option>
+                        <option value="Absent" ${existing[s._id]==='Absent'?'selected':''}>Absent</option>
+                        <option value="Leave" ${existing[s._id]==='Leave'?'selected':''}>Leave</option>
+                    </select>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+async function submitBulkAttendanceNew() {
+    const date = document.getElementById('bulkAttDate').value;
+    const msg = document.getElementById('bulkAttMsg');
+    if (!date) return alert('Select a date');
+    const selected = [...document.querySelectorAll('.manage-student-cb:checked')];
+    const students = selected.map(cb => classStudents.find(s => s._id === cb.value)).filter(Boolean);
+    const records = students.map(s => ({ studentId: s._id, status: document.getElementById(`batt-${s._id}`).value }));
+
+    msg.innerHTML = '<span style="color:#2563eb">⏳ Saving...</span>';
+    const res = await fetch(`${STUDENT_ADMIN}/attendance/bulk`, {
+        method: 'POST', headers, body: JSON.stringify({ date, records })
+    });
+    const r = await res.json();
+    if (r.success) {
+        msg.innerHTML = `<span style="color:#065f46">✅ ${r.message}</span>`;
+        setTimeout(() => document.getElementById('manageForms').innerHTML = '', 1800);
+    } else {
+        msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`;
+    }
+}
+
+
 function showBulkFeeForm() {
     if (classStudents.length === 0) return alert('No students in this class');
     const container = document.getElementById('manageForms');
@@ -1838,6 +1959,7 @@ function onSelectionChange() {
         // Individual actions
         actions.innerHTML = `
             <button class="sd-mini-btn" onclick="showManage('result')">📊 Add Result</button>
+            <button class="sd-mini-btn" onclick="showManage('attendance')">📅 Attendance</button>
             <button class="sd-mini-btn" onclick="showManage('fee')">💰 Add Fee</button>
             <button class="sd-mini-btn" onclick="showManage('doc')">📄 Upload Doc</button>
             <button class="sd-mini-btn" onclick="showManage('view')">👁️ View/Delete Data</button>
@@ -1846,6 +1968,8 @@ function onSelectionChange() {
         // Bulk actions only
         actions.innerHTML = `
             <button class="sd-mini-btn" onclick="showBulkFeeForm()">💰 Bulk Assign Fee</button>
+            <button class="sd-mini-btn" onclick="showBulkPromoteForm()">🎓 Bulk Promote</button>
+            <button class="sd-mini-btn" onclick="showBulkAttendanceForm()">📅 Bulk Attendance</button>
         `;
         forms.innerHTML = '';
     }
@@ -1891,6 +2015,361 @@ async function loadAudit(page = 1) {
         ` : '';
     } catch (e) { console.error(e); }
 }
+
+
+
+async function loadTodayCollection() {
+    if (myRole !== 'superadmin') return;
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/today-collection`, { headers });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('todayCollection').textContent = `₹${data.total}`;
+            document.getElementById('todayCollectionCard').style.display = '';
+        }
+    } catch (e) { console.error(e); }
+}
+
+let lastReportData = null;
+
+// 👇 ADD THESE HERE
+let allReportPayments = [];
+let reportPayPage = 1;
+const PAY_PER_PAGE = 25;
+
+let allDefaulters = [];
+let defaulterPage = 1;
+const DEF_PER_PAGE = 20;
+
+function getRange() {
+    const range = document.getElementById('reportRange').value;
+    const today = new Date();
+    let from = new Date(), to = new Date();
+    if (range === 'today') { /* from=to=today */ }
+    else if (range === 'week') { from.setDate(today.getDate() - today.getDay()); }
+    else if (range === 'month') { from = new Date(today.getFullYear(), today.getMonth(), 1); }
+    else { // custom
+        from = new Date(document.getElementById('reportFrom').value);
+        to = new Date(document.getElementById('reportTo').value);
+    }
+    return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] };
+}
+
+function onRangeChange() {
+    const custom = document.getElementById('reportRange').value === 'custom';
+    document.getElementById('reportFrom').style.display = custom ? '' : 'none';
+    document.getElementById('reportTo').style.display = custom ? '' : 'none';
+    if (!custom) loadReport();
+}
+
+async function downloadReceipt(receiptNo) {
+  try {
+    const token = localStorage.getItem('adminToken');
+const res = await fetch(`${API_URL}/student-admin/receipt/${encodeURIComponent(receiptNo)}`, {
+  headers: { Authorization: `Bearer ${token}` },
+});
+    console.log('Receipt response status:', res.status);
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error('Receipt error body:', txt);
+      alert('Could not load receipt: ' + res.status);
+      return;
+    }
+    const blob = await res.blob();
+    window.open(URL.createObjectURL(blob), '_blank');
+  } catch (err) {
+    console.error('downloadReceipt error:', err);
+    alert('Error: ' + err.message);
+  }
+}
+
+async function loadReport() {
+    const { from, to } = getRange();
+    if (!from || !to || from === 'Invalid Date') return alert('Select valid dates');
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/collection-report?from=${from}&to=${to}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        lastReportData = data;
+        // after lastReportData = data; add:
+            allReportPayments = data.payments;
+            reportPayPage = 1;
+            renderReportPayments();
+
+        
+
+        const breakdown = (title, obj) => `
+            <div class="stat-card">
+                <h4 style="color:#2563eb;margin:0 0 0.5rem">${title}</h4>
+                ${Object.keys(obj).length ? Object.entries(obj).map(([k,v]) =>
+                    `<div style="display:flex;justify-content:space-between;padding:0.2rem 0"><span>${escapeHtml(k)}</span><strong>₹${v}</strong></div>`
+                ).join('') : '<small style="color:#9ca3af">No data</small>'}
+            </div>`;
+        document.getElementById('reportBreakdowns').innerHTML =
+            breakdown('By Mode', data.byMode) +
+            breakdown('By Category', data.byCategory) +
+            breakdown('By Staff', data.byStaff);
+
+        document.getElementById('reportPayments').innerHTML = data.payments.length ? data.payments.map(p => `
+            <tr>
+                <td>${new Date(p.date).toLocaleDateString()}</td>
+                <td>${escapeHtml(p.studentName || '-')} <small style="color:#6b7280">(${escapeHtml(p.rollNumber || '')})</small></td>
+                <td>${escapeHtml(p.class || '-')}</td>
+                <td>₹${p.amount}</td>
+                <td>${escapeHtml(p.mode)}</td>
+                <td>${escapeHtml(p.receiptNo)}</td>
+                <td>${escapeHtml(p.collectedBy)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="7" class="empty-state">No payments in this range</td></tr>';
+    } catch (e) { console.error(e); }
+}
+
+
+
+function renderReportPayments() {
+    const total = allReportPayments.length;
+    const totalPages = Math.ceil(total / PAY_PER_PAGE) || 1;
+    if (reportPayPage > totalPages) reportPayPage = 1;
+    const start = (reportPayPage - 1) * PAY_PER_PAGE;
+    const items = allReportPayments.slice(start, start + PAY_PER_PAGE);
+
+    document.getElementById('reportPayments').innerHTML = items.length ? items.map(p => `
+        <tr>
+            <td>${new Date(p.date).toLocaleDateString()}</td>
+            <td>${escapeHtml(p.studentName || '-')} <small style="color:#6b7280">(${escapeHtml(p.rollNumber || '')})</small></td>
+            <td>${escapeHtml(p.class || '-')}</td>
+            <td>₹${p.amount}</td>
+            <td>${escapeHtml(p.mode)}</td>
+            <td>${escapeHtml(p.receiptNo)}</td>
+            <td>${escapeHtml(p.collectedBy)}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="7" class="empty-state">No payments in this range</td></tr>';
+
+    const pag = document.getElementById('reportPaymentsPagination');
+    if (pag) pag.innerHTML = totalPages > 1 ? `
+        <button class="sd-mini-btn" ${reportPayPage===1?'disabled':''} onclick="changeReportPayPage(-1)">‹ Prev</button>
+        <span style="padding:0.6rem">Page ${reportPayPage} of ${totalPages} (${total} payments)</span>
+        <button class="sd-mini-btn" ${reportPayPage===totalPages?'disabled':''} onclick="changeReportPayPage(1)">Next ›</button>
+    ` : '';
+}
+function changeReportPayPage(dir) { reportPayPage += dir; renderReportPayments(); }
+
+
+async function loadPendingSummary() {
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/pending-summary`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+
+        // Full-width pending card (label left, amount right)
+        document.getElementById('pendingSummary').innerHTML = `
+            <div style="background:white;padding:1.3rem 1.6rem;border-radius:10px;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.08);border-left:4px solid #ef4444;
+                        display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+                <span style="color:#6b7280;font-weight:600;font-size:1.05rem">Total Pending (Overall)</span>
+                <h3 style="color:#ef4444;margin:0;font-size:2.2rem">₹${data.totalPending}</h3>
+            </div>
+        `;
+
+        // Year-wise breakup cards
+        const yr = data.byYear;
+        if (yr) {
+            document.getElementById('pendingByYear').innerHTML = `
+                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #2563eb">
+                    <small style="color:#6b7280">Current FY (${escapeHtml(yr.currentFY)})</small>
+                    <h3 style="margin:0.3rem 0 0;color:#991b1b">₹${yr.current}</h3>
+                </div>
+                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #f59e0b">
+                    <small style="color:#6b7280">Last FY (${escapeHtml(yr.lastFY)})</small>
+                    <h3 style="margin:0.3rem 0 0;color:#991b1b">₹${yr.last}</h3>
+                </div>
+                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #6b7280">
+                    <small style="color:#6b7280">Previous Years (Old)</small>
+                    <h3 style="margin:0.3rem 0 0;color:#991b1b">₹${yr.older}</h3>
+                </div>
+            `;
+        }
+        // Class-wise table
+        const tableHtml = data.byClass.length ? `
+            <table class="data-table">
+                <thead><tr><th>Class</th><th>Pending Amount</th></tr></thead>
+                <tbody>
+                    ${data.byClass.map(c => `
+                        <tr>
+                            <td>Class ${escapeHtml(c.class)}</td>
+                            <td style="color:#991b1b;font-weight:700">₹${c.pending}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>` : '<p style="color:#6b7280;padding:1rem">No pending dues 🎉</p>';
+
+        const wrap = document.getElementById('pendingByClass');
+        if (wrap) wrap.innerHTML = tableHtml;
+    } catch (e) { console.error(e); }
+}
+
+async function loadDefaulterClasses() {
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/classes`, { headers });
+        const data = await res.json();
+        const sel = document.getElementById('defaulterClass');
+        if (sel) sel.innerHTML = '<option value="">All Classes</option>' + data.classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
+    } catch (e) { console.error(e); }
+}
+
+
+async function loadDefaulters() {
+    const cls = document.getElementById('defaulterClass')?.value || '';
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/defaulters${cls ? '?class=' + cls : ''}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        allDefaulters = data.defaulters;
+        defaulterPage = 1;
+        renderDefaulters();
+    } catch (e) { console.error(e); }
+}
+
+function renderDefaulters() {
+    const total = allDefaulters.length;
+    const totalPages = Math.ceil(total / DEF_PER_PAGE) || 1;
+    if (defaulterPage > totalPages) defaulterPage = 1;
+    const start = (defaulterPage - 1) * DEF_PER_PAGE;
+    const pageItems = allDefaulters.slice(start, start + DEF_PER_PAGE);
+
+    document.getElementById('defaultersTable').innerHTML = pageItems.length ? pageItems.map((d, i) => `
+        <tr>
+            <td>${start + i + 1}</td>
+            <td><strong>${escapeHtml(d.name)}</strong> <small style="color:#6b7280">(${escapeHtml(d.rollNumber)})</small></td>
+            <td>${escapeHtml(d.class)} ${escapeHtml(d.section || '')}</td>
+            <td>${escapeHtml(d.parentName || '-')}</td>
+            <td>${escapeHtml(d.phone || '-')}</td>
+            <td style="color:#991b1b;font-weight:700">₹${d.totalPending}</td>
+        </tr>
+    `).join('') : '<tr><td colspan="6" class="empty-state">No defaulters 🎉</td></tr>';
+
+    const pag = document.getElementById('defaultersPagination');
+    if (pag) pag.innerHTML = totalPages > 1 ? `
+        <button class="sd-mini-btn" ${defaulterPage===1?'disabled':''} onclick="changeDefaulterPage(-1)">‹ Prev</button>
+        <span style="padding:0.6rem">Page ${defaulterPage} of ${totalPages} (${total} defaulters)</span>
+        <button class="sd-mini-btn" ${defaulterPage===totalPages?'disabled':''} onclick="changeDefaulterPage(1)">Next ›</button>
+    ` : '';
+}
+
+function changeDefaulterPage(dir) { defaulterPage += dir; renderDefaulters(); }
+
+function exportReport() {
+    if (!lastReportData || !lastReportData.payments.length) return alert('Load a report with data first');
+    const cols = ['Date','Student','Roll','Class','Amount','Mode','Receipt','Collected By'];
+    const rows = lastReportData.payments.map(p => [
+        new Date(p.date).toLocaleDateString(), p.studentName, p.rollNumber, p.class,
+        p.amount, p.mode, p.receiptNo, p.collectedBy
+    ]);
+    let csv = cols.join(',') + '\n';
+    rows.forEach(r => { csv += r.map(f => `"${String(f ?? '').replace(/"/g,'""')}"`).join(',') + '\n'; });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `collection_report_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+
+
+
+function exportDefaulters() {
+    if (!allDefaulters || allDefaulters.length === 0) return alert('No defaulters to export.');
+    const cols = ['#', 'Student Name', 'Roll Number', 'Class', 'Section', 'Parent Name', 'Phone', 'Total Pending'];
+    const rows = allDefaulters.map((d, i) => [
+        i + 1, d.name, d.rollNumber, d.class, d.section || '', d.parentName || '', d.phone || '', d.totalPending
+    ]);
+    let csv = cols.join(',') + '\n';
+    rows.forEach(row => { csv += row.map(f => `"${String(f ?? '').replace(/"/g, '""')}"`).join(',') + '\n'; });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `defaulters_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+
+function showBulkPromoteForm() {
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    if (selectedIds.length === 0) return alert('Select students first');
+
+    // Auto-suggest next class if all selected are from the same class
+    const selectedClasses = [...new Set(
+        [...document.querySelectorAll('.manage-student-cb:checked')]
+            .map(cb => {
+                const s = classStudents.find(st => st._id === cb.value);
+                return s ? s.class : null;
+            })
+    )];
+    let suggested = '';
+    if (selectedClasses.length === 1 && selectedClasses[0]) {
+        const num = parseInt(selectedClasses[0]);
+        if (!isNaN(num)) suggested = String(num + 1);
+    }
+
+    
+    
+    const container = document.getElementById('manageForms');
+    container.innerHTML = `
+        <h4 style="color:#2563eb">🎓 Bulk Promote Students</h4>
+        <p style="color:#6b7280;font-size:0.9rem;margin-bottom:0.8rem">
+            Promoting <strong>${selectedIds.length}</strong> selected student(s).
+            Section will be cleared (reassign later if needed).
+        </p>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:0.5rem;align-items:center;margin-bottom:0.8rem">
+            <input id="promoteClass" placeholder="Promote To Class (e.g. 6, or 'Graduated')" value="${suggested}"
+                   style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
+            <button class="btn btn-primary" onclick="submitBulkPromote()">Promote</button>
+        </div>
+        <div id="promoteMsg"></div>
+    `;
+}
+
+async function submitBulkPromote() {
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    const newClass = document.getElementById('promoteClass').value.trim();
+    const msg = document.getElementById('promoteMsg');
+
+    if (!newClass) {
+        msg.innerHTML = '<span style="color:#991b1b">❌ Enter target class</span>';
+        return;
+    }
+    if (!confirm(`Promote ${selectedIds.length} student(s) to Class ${newClass}? Their section will be cleared.`)) return;
+
+    msg.innerHTML = '<span style="color:#2563eb">⏳ Promoting...</span>';
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/students/bulk-promote`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ studentIds: selectedIds, newClass })
+        });
+        const r = await res.json();
+        if (r.success) {
+            msg.innerHTML = `<span style="color:#065f46">✅ ${r.message}</span>`;
+            setTimeout(() => {
+                document.getElementById('manageForms').innerHTML = '';
+                loadStudentsAdmin();      // refresh full list
+                loadClasses();            // refresh class dropdown
+                loadClassStudents();      // refresh current class view
+            }, 1500);
+        } else {
+            msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`;
+        }
+    } catch (e) {
+        msg.innerHTML = '<span style="color:#991b1b">❌ Server error</span>';
+    }
+}
+
+
+
+// call it once on load — add near your other initial calls at the bottom:
+loadTodayCollection();
 
 // Run on load
 renderPermCheckboxes();
