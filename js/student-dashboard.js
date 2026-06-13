@@ -18,6 +18,44 @@ function esc(t) { if (!t) return ''; const d = document.createElement('div'); d.
 
 let allResults = [];
 
+
+
+async function downloadMyNOC() {
+  try {
+    const token = localStorage.getItem('studentToken');
+    const res = await fetch(`${API_URL}/student-admin/my-noc`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      alert(d.error || 'NOC not available');
+      return;
+    }
+    const blob = await res.blob();
+    window.open(URL.createObjectURL(blob), '_blank');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
+
+async function downloadMyReceipt(receiptNo) {
+  try {
+    const token = localStorage.getItem('studentToken');
+    const res = await fetch(`${API_URL}/student/my-receipt/${encodeURIComponent(receiptNo)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      alert('Could not load receipt: ' + res.status);
+      return;
+    }
+    const blob = await res.blob();
+    window.open(URL.createObjectURL(blob), '_blank');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  }
+}
+
 async function loadResults() {
     const panel = document.getElementById('results-panel');
     try {
@@ -244,6 +282,10 @@ async function loadFees() {
                     ${allPaid ? '✅' : '₹' + pending}
                 </div>
                 <div style="color:#6b7280;font-size:0.9rem">Paid ₹${totalPaid} of ₹${totalDue}</div>
+                <button type="button" onclick="downloadMyNOC()"
+    style="margin-top:1rem;background:#15803d;color:#fff;border:none;border-radius:8px;padding:0.6rem 1.4rem;font-weight:600;cursor:pointer;font-family:inherit">
+    📜 Download Fee NOC
+</button>
             </div>
 
             <!-- FEE CARDS -->
@@ -254,11 +296,17 @@ async function loadFees() {
                 const statusText = paidThis ? '✅ Paid' : (isOverdue ? '⚠️ Overdue' : '⏳ Pending');
 
                 const receipts = f.payments.length ? f.payments.map(p => `
-                    <div style="display:flex;justify-content:space-between;padding:0.5rem 0.8rem;background:#f9fafb;border-radius:8px;margin-top:0.4rem;font-size:0.85rem">
-                        <span>💵 ₹${p.amount} <span style="color:#9ca3af">· ${esc(p.mode)}</span></span>
-                        <span style="color:#6b7280">${new Date(p.date).toLocaleDateString()} · #${esc(p.receiptNo)}</span>
-                    </div>
-                `).join('') : '<p style="color:#9ca3af;font-size:0.85rem;margin:0.4rem 0">No payments recorded yet.</p>';
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.8rem;background:#f9fafb;border-radius:8px;margin-top:0.4rem;font-size:0.85rem">
+        <span>💵 ₹${p.amount} <span style="color:#9ca3af">· ${esc(p.mode)}</span></span>
+        <span style="display:flex;align-items:center;gap:0.6rem">
+            <span style="color:#6b7280">${new Date(p.date).toLocaleDateString()} · #${esc(p.receiptNo)}</span>
+            <button type="button" onclick="downloadMyReceipt('${esc(p.receiptNo)}')"
+                style="background:#1a2a4f;color:#fff;border:none;border-radius:5px;padding:3px 10px;font-size:0.75rem;cursor:pointer;font-family:inherit">
+                Download
+            </button>
+        </span>
+    </div>
+`).join('') : '<p style="color:#9ca3af;font-size:0.85rem;margin:0.4rem 0">No payments recorded yet.</p>';
 
                 return `
                 <div style="border:1px solid #e5e7eb;border-radius:12px;padding:1.1rem 1.3rem;margin-bottom:1rem">

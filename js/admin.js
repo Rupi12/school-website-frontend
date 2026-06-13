@@ -25,6 +25,21 @@ setInterval(() => {
     loadMessages();
 }, 30000);
 
+
+function downloadNOC(sid) {
+  fetch(`${STUDENT_ADMIN}/noc/${sid}`, { headers })
+    .then(async r => {
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        alert(d.error || 'NOC not available');
+        return;
+      }
+      const blob = await r.blob();
+      window.open(URL.createObjectURL(blob), '_blank');
+    })
+    .catch(() => alert('Could not load NOC'));
+}
+
 async function loadApplications() {
     try {
         const res = await fetch(`${API_URL}/applications`, { headers });
@@ -939,6 +954,28 @@ async function loadStudentData(sid) {
             `).join('') : '<p style="color:#6b7280">No results</p>'}
 
             <h4 style="margin-top:1rem">💰 Fees</h4>
+            ${(() => {
+                const totalFee = data.fees.reduce((s, f) => s + f.amount, 0);
+                const totalPaidAll = data.fees.reduce((s, f) => s + f.payments.reduce((a, p) => a + p.amount, 0), 0);
+                const pendingAll = totalFee - totalPaidAll;
+                const allPaid = data.fees.length > 0 && pendingAll <= 0;
+                return `
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.6rem;
+                    padding:0.8rem 1rem;border-radius:10px;margin-bottom:0.8rem;
+                    background:${allPaid ? '#ecfdf5' : '#fef2f2'};border:1px solid ${allPaid ? '#a7f3d0' : '#fecaca'}">
+                    <div>
+                        <div style="font-size:0.8rem;color:#6b7280;font-weight:600">${allPaid ? 'ALL FEES CLEARED' : 'TOTAL DUE'}</div>
+                        <div style="font-size:1.3rem;font-weight:800;color:${allPaid ? '#065f46' : '#991b1b'}">
+                            ${allPaid ? '₹0' : '₹' + pendingAll}
+                        </div>
+                        <div style="color:#6b7280;font-size:0.82rem">Paid ₹${totalPaidAll} of ₹${totalFee}</div>
+                    </div>
+                    <button type="button" onclick="downloadNOC('${sid}')"
+                        style="background:#15803d;color:#fff;border:none;border-radius:8px;padding:0.55rem 1.2rem;font-weight:600;cursor:pointer;font-size:0.88rem">
+                        📜 Download Fee NOC
+                    </button>
+                </div>`;
+            })()}
             ${data.fees.length ? data.fees.map(f => {
                 const totalPaid = f.payments.reduce((s, p) => s + p.amount, 0);
                 const isOverdue = f.dueDate && new Date(f.dueDate) < new Date() && f.status !== 'Paid';

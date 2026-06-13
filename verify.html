@@ -4,7 +4,7 @@
 <body>
   <div id="result">Verifying…</div>
   <script>
-    const API = "http://localhost:5000"; // change to your live backend URL on deploy
+    const API = "https://school-website-backend-j6pc.onrender.com"; 
     const receiptNo = location.pathname.split('/').pop();
     fetch(`${API}/api/student-admin/verify-receipt/${receiptNo}`)
       .then(r => r.json())
