@@ -10,7 +10,7 @@
       .then(r => r.json())
       .then(d => {
         document.getElementById('result').innerHTML = d.valid
-          ? `✅ Valid Receipt<br>${d.studentName} (${d.class})<br>${d.category} • ₹${d.amount} • ${new Date(d.date).toLocaleDateString('en-IN')}`
+          ? `✅ Valid Receipt<br>${d.studentName} (${d.class})<br>${d.category} • Paid: ₹${d.amount} ${d.discount ? `(Discount Applied: ₹${d.discount})` : ''} • ${new Date(d.date).toLocaleDateString('en-IN')}`
           : `❌ Invalid or unknown receipt`;
       });
   </script>

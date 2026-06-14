@@ -80,14 +80,13 @@ function renderApplications(apps) {
     tbody.innerHTML = apps.map(app => `
         <tr>
             <td>
-                <strong>${highlightText(app.studentName, searchTerm)}</strong><br>
-                <small style="color:#6b7280">${highlightText(app.email, searchTerm)}</small>
+                <strong>${highlightText(app.studentName, searchTerm)}</strong>
             </td>
             <td>${escapeHtml(app.grade)}</td>
             <td>${highlightText(app.parentName, searchTerm)}</td>
             <td>${highlightText(app.phone, searchTerm)}</td>
             <td>
-                <select onchange="updateStatus('${app._id}', this.value)" class="status-select status-${app.status}">
+                <select onchange="updateStatus('${app._id}', this.value)" class="status-select status-${app.status}" ${!hasPermission('applications.edit') ? 'disabled' : ''}>
                     <option value="pending" ${app.status==='pending'?'selected':''}>Pending</option>
                     <option value="reviewing" ${app.status==='reviewing'?'selected':''}>Reviewing</option>
                     <option value="approved" ${app.status==='approved'?'selected':''}>Approved</option>
@@ -97,7 +96,7 @@ function renderApplications(apps) {
             <td>${new Date(app.createdAt).toLocaleDateString()}</td>
             <td>
                 <button class="action-btn btn-view" onclick='viewApp(${JSON.stringify(app)})'>View</button>
-                <button class="action-btn btn-delete" onclick="deleteApp('${app._id}')">Delete</button>
+                ${hasPermission('applications.delete') ? `<button class="action-btn btn-delete" onclick="deleteApp('${app._id}')">Delete</button>` : ''}
             </td>
         </tr>
     `).join('');
@@ -113,13 +112,13 @@ function renderMessages(msgs) {
     tbody.innerHTML = msgs.map(msg => `
         <tr style="${!msg.isRead ? 'background:#fef3c7' : ''}">
             <td><strong>${highlightText(msg.name, searchTerm)}</strong></td>
-            <td>${highlightText(msg.email, searchTerm)}</td>
+            <td>${highlightText(msg.phone || msg.email, searchTerm)}</td>
             <td>${highlightText(msg.subject, searchTerm)}</td>
             <td>${new Date(msg.createdAt).toLocaleDateString()}</td>
             <td>${msg.isRead ? '✅ Read' : '🔵 New'}</td>
             <td>
                 <button class="action-btn btn-view" onclick='viewMsg(${JSON.stringify(msg)})'>View</button>
-                <button class="action-btn btn-delete" onclick="deleteMsg('${msg._id}')">Delete</button>
+                ${hasPermission('messages.delete') ? `<button class="action-btn btn-delete" onclick="deleteMsg('${msg._id}')">Delete</button>` : ''}
             </td>
         </tr>
     `).join('');
@@ -134,7 +133,6 @@ function handleSearch() {
         if (searchTerm) {
             filtered = filtered.filter(app =>
                 app.studentName.toLowerCase().includes(searchTerm) ||
-                app.email.toLowerCase().includes(searchTerm) ||
                 app.parentName.toLowerCase().includes(searchTerm) ||
                 app.phone.toLowerCase().includes(searchTerm) ||
                 app.grade.toLowerCase().includes(searchTerm)
@@ -147,10 +145,10 @@ function handleSearch() {
         let filtered = allMessages;
         if (searchTerm) {
             filtered = filtered.filter(msg =>
-                msg.name.toLowerCase().includes(searchTerm) ||
-                msg.email.toLowerCase().includes(searchTerm) ||
-                msg.subject.toLowerCase().includes(searchTerm) ||
-                msg.message.toLowerCase().includes(searchTerm)
+                (msg.name || '').toLowerCase().includes(searchTerm) ||
+                (msg.phone || msg.email || '').toLowerCase().includes(searchTerm) ||
+                (msg.subject || '').toLowerCase().includes(searchTerm) ||
+                (msg.message || '').toLowerCase().includes(searchTerm)
             );
         }
         renderMessages(filtered);
@@ -218,7 +216,6 @@ function viewApp(app) {
         <div class="detail-row"><strong>Gender:</strong> ${escapeHtml(app.gender)}</div>
         <div class="detail-row"><strong>Parent Name:</strong> ${escapeHtml(app.parentName)}</div>
         <div class="detail-row"><strong>Phone:</strong> ${escapeHtml(app.phone)}</div>
-        <div class="detail-row"><strong>Email:</strong> ${escapeHtml(app.email)}</div>
         <div class="detail-row"><strong>Address:</strong> ${escapeHtml(app.address)}</div>
         <div class="detail-row"><strong>Previous School:</strong> ${escapeHtml(app.prevSchool || 'N/A')}</div>
         <div class="detail-row"><strong>Status:</strong> <span class="status-select status-${app.status}">${app.status}</span></div>
@@ -232,7 +229,7 @@ async function viewMsg(msg) {
     modalBody.innerHTML = `
         <h2 style="color:#2563eb;margin-top:0">💬 Message Details</h2>
         <div class="detail-row"><strong>From:</strong> ${escapeHtml(msg.name)}</div>
-        <div class="detail-row"><strong>Email:</strong> ${escapeHtml(msg.email)}</div>
+        <div class="detail-row"><strong>Contact:</strong> ${escapeHtml(msg.phone || msg.email)}</div>
         <div class="detail-row"><strong>Subject:</strong> ${escapeHtml(msg.subject)}</div>
         <div class="detail-row"><strong>Date:</strong> ${new Date(msg.createdAt).toLocaleString()}</div>
         <div class="detail-row"><strong>Message:</strong><br><br>
@@ -276,6 +273,21 @@ function showTab(tab, btn) {
     if (tab === 'news') loadNewsAdmin();
     if (tab === 'admins') loadAdmins();
 
+    // Hide forms based on granular permissions
+    const gForm = document.getElementById('galleryForm');
+    if (gForm) gForm.style.display = hasPermission('gallery.add') ? 'block' : 'none';
+    const nForm = document.getElementById('newsForm');
+    if (nForm) nForm.style.display = hasPermission('news.add') ? 'block' : 'none';
+    const dForm = document.getElementById('docForm');
+    if (dForm) dForm.style.display = hasPermission('documents.add') ? 'block' : 'none';
+    const sForm = document.getElementById('studentForm');
+    if (sForm) sForm.style.display = hasPermission('students.add') ? 'block' : 'none';
+    const bUpload = document.getElementById('bulkUploadForm');
+    if (bUpload) bUpload.style.display = hasPermission('students.add') ? 'block' : 'none';
+    
+    document.querySelectorAll('[data-perm="applications.export"]').forEach(el => el.style.display = hasPermission('applications.export') ? '' : 'none');
+    document.querySelectorAll('[data-perm="students.export"]').forEach(el => el.style.display = hasPermission('students.export') ? '' : 'none');
+
     const searchBar = document.querySelector('.search-bar');
     if (searchBar) {
         searchBar.style.display = (tab === 'gallery' || tab === 'news' || tab === 'documents' || tab === 'students'|| tab === 'admins' || tab === 'audit' || tab === 'report') ? 'none' : 'flex';
@@ -283,11 +295,11 @@ function showTab(tab, btn) {
 
     const searchInput = document.getElementById('searchInput');
     if (tab === 'applications') {
-        if (searchInput) searchInput.placeholder = 'Search by name, email, parent, or phone...';
+        if (searchInput) searchInput.placeholder = 'Search by name, parent, or phone...';
         const fs = document.getElementById('filterStatus');
         if (fs) fs.style.display = '';
     } else if (tab === 'messages') {
-        if (searchInput) searchInput.placeholder = 'Search by name, email, subject...';
+        if (searchInput) searchInput.placeholder = 'Search by name, phone, subject...';
         const fs = document.getElementById('filterStatus');
         if (fs) fs.style.display = 'none';
     }
@@ -321,12 +333,12 @@ async function loadGalleryAdmin() {
         }
         grid.innerHTML = allGalleryPhotos.map(photo => `
             <div class="gallery-admin-item">
-                <button class="gallery-delete-btn" onclick="deletePhoto('${photo._id}')">×</button>
+                ${hasPermission('gallery.delete') ? `<button class="gallery-delete-btn" onclick="deletePhoto('${photo._id}')">×</button>` : ''}
                 <img src="${escapeHtml(photo.imageUrl)}" onerror="this.src='https://via.placeholder.com/200x150?text=Invalid+URL'">
                 <div class="gallery-admin-info">
                     <h4>${escapeHtml(photo.title)}</h4>
                     <span class="cat">${escapeHtml(photo.category)}</span>
-                    <button class="action-btn btn-view" style="margin-top:0.5rem;width:100%" onclick='editPhoto(${JSON.stringify(photo)})'>✏️ Edit</button>
+                    ${hasPermission('gallery.edit') ? `<button class="action-btn btn-view" style="margin-top:0.5rem;width:100%" onclick='editPhoto(${JSON.stringify(photo)})'>✏️ Edit</button>` : ''}
                 </div>
             </div>
         `).join('');
@@ -432,8 +444,8 @@ async function loadNewsAdmin() {
                     <h4 style="margin:0.3rem 0">${escapeHtml(item.title)}</h4>
                     <small style="color:#6b7280">${new Date(item.createdAt).toLocaleDateString()}</small>
                 </div>
-                <button class="action-btn btn-view" onclick='editNews(${JSON.stringify(item)})'>✏️ Edit</button>
-                <button class="action-btn btn-delete" onclick="deleteNews('${item._id}')">Delete</button>
+                ${hasPermission('news.edit') ? `<button class="action-btn btn-view" onclick='editNews(${JSON.stringify(item)})'>✏️ Edit</button>` : ''}
+                ${hasPermission('news.delete') ? `<button class="action-btn btn-delete" onclick="deleteNews('${item._id}')">Delete</button>` : ''}
             </div>
         `).join('');
     } catch (error) { console.error('Error loading news:', error); }
@@ -499,14 +511,15 @@ function editNews(item) {
 }
 
 function exportApplications() {
+    if (!hasPermission('applications.export')) return alert('Permission denied');
     if (!allApplications || allApplications.length === 0) {
         alert('No applications to export');
         return;
     }
-    const cols = ['Student Name','DOB','Grade','Gender','Parent Name','Phone','Email','Address','Previous School','Status','Submitted'];
+    const cols = ['Student Name','DOB','Grade','Gender','Parent Name','Phone','Address','Previous School','Status','Submitted'];
     const rows = allApplications.map(app => [
         app.studentName, new Date(app.dob).toLocaleDateString(), app.grade, app.gender,
-        app.parentName, app.phone, app.email, app.address, app.prevSchool || 'N/A',
+        app.parentName, app.phone, app.address, app.prevSchool || 'N/A',
         app.status, new Date(app.createdAt).toLocaleDateString()
     ]);
     let csv = cols.join(',') + '\n';
@@ -540,7 +553,7 @@ async function loadDocsAdmin() {
                     <small style="color:#6b7280">${new Date(doc.createdAt).toLocaleDateString()}</small>
                 </div>
                 <a href="${doc.fileUrl}" target="_blank" class="action-btn btn-view">View</a>
-                <button class="action-btn btn-delete" onclick="deleteDoc('${doc._id}')">Delete</button>
+                ${hasPermission('documents.delete') ? `<button class="action-btn btn-delete" onclick="deleteDoc('${doc._id}')">Delete</button>` : ''}
             </div>
         `).join('');
     } catch (error) { console.error(error); }
@@ -599,7 +612,7 @@ async function loadStudentsAdmin() {
         const data = await res.json();
         if (!data.success) return;
         allStudents = data.students;
-        const classes = [...new Set(allStudents.map(s => s.class))].sort();
+        const classes = [...new Set(allStudents.map(s => s.class))].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
         const filterSel = document.getElementById('listClassFilter');
         if (filterSel) {
             filterSel.innerHTML = '<option value="">All Classes</option>' + classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
@@ -635,9 +648,9 @@ function renderStudentList() {
                 <small style="color:#6b7280">Roll: ${escapeHtml(s.rollNumber)} | Class ${escapeHtml(s.class)} ${escapeHtml(s.section || '')}</small>
             </div>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                <button class="action-btn btn-view" onclick="openEditStudentModal('${s._id}', '${escapeHtml(s.name)}', '${escapeHtml(s.rollNumber)}', '${escapeHtml(s.class)}', '${escapeHtml(s.section || '')}', '${escapeHtml(s.parentName || '')}', '${escapeHtml(s.phone || '')}')">✏️ Edit</button>
-                <button class="action-btn" style="background:#f59e0b; color:white;" onclick="openResetPwdModal('${s._id}', '${escapeHtml(s.name)}')">🔑 Reset Pwd</button>
-                <button class="action-btn btn-delete" onclick="deleteStudent('${s._id}')">🗑️ Delete</button>
+                ${hasPermission('students.edit') ? `<button class="action-btn btn-view" onclick="openEditStudentModal('${s._id}', '${escapeHtml(s.name)}', '${escapeHtml(s.rollNumber)}', '${escapeHtml(s.class)}', '${escapeHtml(s.section || '')}', '${escapeHtml(s.parentName || '')}', '${escapeHtml(s.phone || '')}')">✏️ Edit</button>
+                <button class="action-btn" style="background:#f59e0b; color:white;" onclick="openResetPwdModal('${s._id}', '${escapeHtml(s.name)}')">🔑 Reset Pwd</button>` : ''}
+                ${hasPermission('students.delete') ? `<button class="action-btn btn-delete" onclick="deleteStudent('${s._id}')">🗑️ Delete</button>` : ''}
             </div>
         </div>
     `).join('');
@@ -724,10 +737,11 @@ async function loadClassStudents() {
     const classActions = document.getElementById('classLevelActions');
     if (classActions) {
         const selectedCls = document.getElementById('manageClass').value;
-        classActions.innerHTML = `
+        classActions.innerHTML = hasPermission('timetable.manage') ? `
             <button class="sd-mini-btn" onclick="showTimetableForm()">🗓️ Set Timetable for Class ${escapeHtml(selectedCls)}</button>
-        `;
+        ` : '';
         classActions.style.display = 'block';
+        classActions.style.display = 'none';
     }
 }
 
@@ -806,6 +820,10 @@ function showManage(type) {
                 <input id="feeType" placeholder="Description (e.g. Term 1)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
                 <input id="feeAmount" type="number" placeholder="Total Amount ₹" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
             </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+                <input id="feeDiscount" type="number" placeholder="Discount Amount ₹ (Optional)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                <input id="feeDiscountReason" placeholder="Discount Reason (Optional)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+            </div>
             <input id="feeDue" type="date" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem">
             <button class="btn btn-primary" onclick="saveFee('${sid}')">Add Due</button>
         `;
@@ -827,8 +845,10 @@ function showManage(type) {
                     <option value="Present">Present</option>
                     <option value="Absent">Absent</option>
                     <option value="Leave">Leave</option>
+                    <option value="Half-Day">Half-Day</option>
                 </select>
             </div>
+            <input id="attRemarks" placeholder="Remarks (optional)" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;font-family:inherit">
             <button class="btn btn-primary" onclick="saveAttendance('${sid}')">Save Attendance</button>
             <div id="attMsg" style="margin-top:0.5rem"></div>
         `;
@@ -881,11 +901,12 @@ async function saveResult(sid) {
 async function saveAttendance(sid) {
     const date = document.getElementById('attDate').value;
     const status = document.getElementById('attStatus').value;
+    const remarks = document.getElementById('attRemarks').value;
     const msg = document.getElementById('attMsg');
     if (!date) return alert('Select a date');
     const res = await fetch(`${STUDENT_ADMIN}/attendance`, {
         method: 'POST', headers,
-        body: JSON.stringify({ studentId: sid, date, status })
+        body: JSON.stringify({ studentId: sid, date, status, remarks })
     });
     const r = await res.json();
     if (r.success) {
@@ -910,6 +931,8 @@ async function saveFee(sid) {
             category: document.getElementById('feeCategory').value,
             feeType,
             amount: Number(amount),
+            discount: Number(document.getElementById('feeDiscount').value) || 0,
+            discountReason: document.getElementById('feeDiscountReason').value || '',
             dueDate: document.getElementById('feeDue').value || null
         })
     });
@@ -931,6 +954,20 @@ async function saveDoc(sid) {
     if (r.success) document.getElementById('manageForms').innerHTML = '';
 }
 
+async function downloadReportCard(resultId) {
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/results/${resultId}/pdf`, { headers });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Backend Status ${res.status}. Did you restart the server?`);
+        }
+        const blob = new Blob([await res.arrayBuffer()], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+    } catch (e) {
+        alert('PDF Error: ' + e.message);
+    }
+}
+
 async function loadStudentData(sid) {
     const container = document.getElementById('manageForms');
     container.innerHTML = '<p>Loading...</p>';
@@ -947,8 +984,9 @@ async function loadStudentData(sid) {
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem;background:#f9fafb;border-radius:8px;margin-bottom:0.4rem">
                     <span>${escapeHtml(r.examName)} - ${escapeHtml(r.term || '')} ${escapeHtml(r.academicYear || '')}</span>
                     <span style="display:flex;gap:0.3rem">
-                        <button class="action-btn btn-view" onclick="editResult('${r._id}','${sid}')">✏️ Edit</button>
-                        <button class="action-btn btn-delete" onclick="deleteResult('${r._id}','${sid}')">Delete</button>
+                        <button class="action-btn" style="background:#10b981;color:white" onclick="downloadReportCard('${r._id}')">📄 PDF</button>
+                        ${hasPermission('results.manage') ? `<button class="action-btn btn-view" onclick="editResult('${r._id}','${sid}')">✏️ Edit</button>
+                        <button class="action-btn btn-delete" onclick="deleteResult('${r._id}','${sid}')">Delete</button>` : ''}
                     </span>
                 </div>
             `).join('') : '<p style="color:#6b7280">No results</p>'}
@@ -956,8 +994,9 @@ async function loadStudentData(sid) {
             <h4 style="margin-top:1rem">💰 Fees</h4>
             ${(() => {
                 const totalFee = data.fees.reduce((s, f) => s + f.amount, 0);
+                const totalDiscount = data.fees.reduce((s, f) => s + (f.discount || 0), 0);
                 const totalPaidAll = data.fees.reduce((s, f) => s + f.payments.reduce((a, p) => a + p.amount, 0), 0);
-                const pendingAll = totalFee - totalPaidAll;
+                const pendingAll = (totalFee - totalDiscount) - totalPaidAll;
                 const allPaid = data.fees.length > 0 && pendingAll <= 0;
                 return `
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.6rem;
@@ -968,7 +1007,10 @@ async function loadStudentData(sid) {
                         <div style="font-size:1.3rem;font-weight:800;color:${allPaid ? '#065f46' : '#991b1b'}">
                             ${allPaid ? '₹0' : '₹' + pendingAll}
                         </div>
-                        <div style="color:#6b7280;font-size:0.82rem">Paid ₹${totalPaidAll} of ₹${totalFee}</div>
+                        <div style="color:#6b7280;font-size:0.85rem;margin-top:0.3rem">
+                            Total Fees: ₹${totalFee} ${totalDiscount > 0 ? `| Discount: -₹${totalDiscount} | Net: ₹${totalFee - totalDiscount}` : ''}<br>
+                            Paid: ₹${totalPaidAll}
+                        </div>
                     </div>
                     <button type="button" onclick="downloadNOC('${sid}')"
                         style="background:#15803d;color:#fff;border:none;border-radius:8px;padding:0.55rem 1.2rem;font-weight:600;cursor:pointer;font-size:0.88rem">
@@ -978,6 +1020,7 @@ async function loadStudentData(sid) {
             })()}
             ${data.fees.length ? data.fees.map(f => {
                 const totalPaid = f.payments.reduce((s, p) => s + p.amount, 0);
+                const netAmount = f.amount - (f.discount || 0);
                 const isOverdue = f.dueDate && new Date(f.dueDate) < new Date() && f.status !== 'Paid';
                 const historyHtml = f.payments.length ? `
                     <div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #e5e7eb;font-size:0.82rem">
@@ -985,25 +1028,30 @@ async function loadStudentData(sid) {
                         ${f.payments.map(p => `
                             <div style="display:flex;justify-content:space-between;padding:0.2rem 0;color:#374151">
                                 <span>₹${p.amount} | ${escapeHtml(p.mode)} | ${new Date(p.date).toLocaleDateString()} | Rec#${escapeHtml(p.receiptNo)} | by ${escapeHtml(p.collectedBy)}</span>
-                               
-                                <button onclick="deletePayment('${f._id}','${p._id}','${sid}')" style="background:none;border:none;color:#ef4444;cursor:pointer" title="Delete">✖</button>
+                                ${hasPermission('fees.manage') ? `<button onclick="deletePayment('${f._id}','${p._id}','${sid}')" style="background:none;border:none;color:#ef4444;cursor:pointer" title="Delete">✖</button>` : ''}
                                 <button type="button" onclick="downloadReceipt('${escapeHtml(p.receiptNo)}')" style="background:#1a2a4f;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:0.75rem;cursor:pointer;margin-right:6px" title="Download Receipt">Receipt</button>
                             </div>
                         `).join('')}
                     </div>` : '';
                 return `
                 <div style="padding:0.6rem;background:#f9fafb;border-radius:8px;margin-bottom:0.4rem;border-left:4px solid ${f.status==='Paid'?'#10b981':(isOverdue?'#ef4444':'#fbbf24')}">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.3rem">
-                        <span>
-                            <strong>${escapeHtml(f.academicYear)}</strong> | <strong>${escapeHtml(f.category)}</strong> - ${escapeHtml(f.feeType)} | 
-                            ₹${totalPaid}/₹${f.amount}
-                            <span class="badge ${f.status==='Paid'?'paid':'pending'}" style="margin-left:0.3rem">${f.status}</span>
-                            ${isOverdue ? '<span style="color:#ef4444;font-weight:600;font-size:0.85rem"> ⚠️ Overdue</span>' : ''}
-                        </span>
-                        <span style="display:flex;gap:0.3rem;flex-wrap:wrap">
-                            <button class="action-btn btn-view" onclick="editFee('${f._id}','${escapeHtml(f.feeType)}',${f.amount},'${escapeHtml(f.category)}','${escapeHtml(f.academicYear)}','${sid}')">✏️ Edit</button>
-                            ${f.status !== 'Paid' ? `<button class="action-btn btn-view" onclick="recordPayment('${f._id}',${f.amount},${totalPaid},'${sid}')">💵 Pay</button>` : ''}
-                            <button class="action-btn btn-delete" onclick="deleteFee('${f._id}','${sid}')">Delete</button>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+                        <div style="display:flex;flex-direction:column;gap:0.3rem">
+                            <div>
+                                <strong>${escapeHtml(f.academicYear)}</strong> | <strong>${escapeHtml(f.category)}</strong> - ${escapeHtml(f.feeType)}
+                                <span class="badge ${f.status==='Paid'?'paid':'pending'}" style="margin-left:0.3rem">${f.status}</span>
+                                ${isOverdue ? '<span style="color:#ef4444;font-weight:600;font-size:0.85rem"> ⚠️ Overdue</span>' : ''}
+                            </div>
+                            <div style="font-size:0.85rem;color:#4b5563;">
+                                Total Fee: ₹${f.amount} 
+                                ${f.discount ? ` | <span style="color:#10b981;">Discount: -₹${f.discount}</span> | Net Fee: ₹${netAmount}` : ''}
+                                <br>Paid: ₹${totalPaid} | Pending: ₹${netAmount - totalPaid}
+                            </div>
+                        </div>
+                        <span style="display:flex;gap:0.3rem;flex-wrap:wrap;align-items:center">
+                            ${hasPermission('fees.manage') ? `<button class="action-btn btn-view" onclick="editFee('${f._id}','${escapeHtml(f.feeType)}',${f.amount},${f.discount || 0},'${escapeHtml(f.discountReason || '')}','${escapeHtml(f.category)}','${escapeHtml(f.academicYear)}','${sid}')">✏️ Edit</button>` : ''}
+                            ${f.status !== 'Paid' && hasPermission('fees.manage') ? `<button class="action-btn btn-view" onclick="recordPayment('${f._id}',${netAmount},${totalPaid},'${sid}')">💵 Pay</button>` : ''}
+                            ${hasPermission('fees.manage') ? `<button class="action-btn btn-delete" onclick="deleteFee('${f._id}','${sid}')">Delete</button>` : ''}
                         </span>
                     </div>
                     ${historyHtml}
@@ -1015,9 +1063,9 @@ async function loadStudentData(sid) {
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:0.6rem;background:#f9fafb;border-radius:8px;margin-bottom:0.4rem">
                     <span>${escapeHtml(d.title)}</span>
                     <span style="display:flex;gap:0.3rem;align-items:center">
-                        <button class="action-btn btn-view" onclick="editDoc('${d._id}','${sid}')">✏️ Edit</button>
+                        ${hasPermission('studentdocs.manage') ? `<button class="action-btn btn-view" onclick="editDoc('${d._id}','${sid}')">✏️ Edit</button>` : ''}
                         <a href="${d.fileUrl}" target="_blank" class="action-btn btn-view" style="padding:0.4rem 0.8rem;font-size:0.85rem;text-decoration:none">View</a>
-                        <button class="action-btn btn-delete" onclick="deleteStudentDoc('${d._id}','${sid}')">Delete</button>
+                        ${hasPermission('studentdocs.manage') ? `<button class="action-btn btn-delete" onclick="deleteStudentDoc('${d._id}','${sid}')">Delete</button>` : ''}
                     </span>
                 </div>
             `).join('') : '<p style="color:#6b7280">No documents</p>'}
@@ -1156,13 +1204,32 @@ async function saveTimetable() {
 
 // ============ PERMISSIONS ============
 const ALL_PERMISSIONS = [
-    { key: 'applications', label: '📝 Applications' },
-    { key: 'messages', label: '💬 Messages' },
-    { key: 'gallery', label: '📸 Gallery' },
-    { key: 'news', label: '📰 News' },
-    { key: 'documents', label: '📄 Documents' },
-    { key: 'students.list', label: '🎓 Student List' },
-    { key: 'students.manage', label: '⚙️ Manage Student Data' },
+    { key: 'applications.view', label: '📝 View Applications' },
+    { key: 'applications.edit', label: '📝 Edit App Status' },
+    { key: 'applications.delete', label: '📝 Delete Applications' },
+    { key: 'applications.export', label: '📝 Export Applications' },
+    { key: 'messages.view', label: '💬 View Messages' },
+    { key: 'messages.delete', label: '💬 Delete Messages' },
+    { key: 'gallery.add', label: '📸 Add Gallery Photos' },
+    { key: 'gallery.edit', label: '📸 Edit Gallery Photos' },
+    { key: 'gallery.delete', label: '📸 Delete Gallery Photos' },
+    { key: 'news.add', label: '📰 Add News' },
+    { key: 'news.edit', label: '📰 Edit News' },
+    { key: 'news.delete', label: '📰 Delete News' },
+    { key: 'documents.add', label: '📄 Upload Public Docs' },
+    { key: 'documents.delete', label: '📄 Delete Public Docs' },
+    { key: 'students.view', label: '🎓 View Students' },
+    { key: 'students.add', label: '🎓 Add Students' },
+    { key: 'students.edit', label: '🎓 Edit/Promote Students' },
+    { key: 'students.delete', label: '🎓 Delete Students' },
+    { key: 'students.export', label: '🎓 Export Students' },
+    { key: 'results.manage', label: '📊 Manage Results' },
+    { key: 'fees.manage', label: '💰 Manage Fees' },
+    { key: 'attendance.manage', label: '📅 Manage Attendance' },
+    { key: 'timetable.manage', label: '🗓️ Manage Timetable' },
+    { key: 'studentdocs.manage', label: '📄 Manage Student Docs' },
+    { key: 'reports.view', label: '📈 View Finance Reports' },
+    { key: 'audit.view', label: '🔍 View Audit Logs' }
 ];
 
 const myRole = adminInfo.role || 'admin';
@@ -1175,12 +1242,12 @@ function hasPermission(perm) {
 
 function applyTabPermissions() {
     const tabMap = {
-        'applications': 'applications',
-        'messages': 'messages',
-        'gallery': 'gallery',
-        'news': 'news',
-        'documents': 'documents',
-        'students': ['students.list','students.manage']
+        'applications': ['applications.view', 'applications.edit', 'applications.delete', 'applications.export'],
+        'messages': ['messages.view', 'messages.delete'],
+        'gallery': ['gallery.add', 'gallery.edit', 'gallery.delete'],
+        'news': ['news.add', 'news.edit', 'news.delete'],
+        'documents': ['documents.add', 'documents.delete'],
+        'students': ['students.view', 'students.add', 'students.edit', 'students.delete', 'students.export', 'results.manage', 'fees.manage', 'attendance.manage', 'timetable.manage', 'studentdocs.manage']
     };
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1191,11 +1258,11 @@ function applyTabPermissions() {
         
         
         if (tab === 'audit') {
-            btn.style.display = myRole === 'superadmin' ? '' : 'none';
+            btn.style.display = hasPermission('audit.view') ? '' : 'none';
             return;
         }
         if (tab === 'report') {
-            btn.style.display = myRole === 'superadmin' ? '' : 'none';
+            btn.style.display = hasPermission('reports.view') ? '' : 'none';
             return;
         }
         if (tab === 'admins') {
@@ -1216,8 +1283,28 @@ function applyTabPermissions() {
 }
 
 function applyStudentSectionPermissions() {
+    const permMap = {
+        'applications': ['applications.view', 'applications.edit', 'applications.delete', 'applications.export'],
+        'messages': ['messages.view', 'messages.delete'],
+        'gallery': ['gallery.add', 'gallery.edit', 'gallery.delete'],
+        'news': ['news.add', 'news.edit', 'news.delete'],
+        'documents': ['documents.add', 'documents.delete'],
+        'students.list': ['students.view', 'students.add', 'students.edit', 'students.delete', 'students.export', 'results.manage', 'fees.manage', 'attendance.manage', 'timetable.manage', 'studentdocs.manage'],
+        'students.manage': ['students.add', 'students.edit', 'students.delete', 'results.manage', 'fees.manage', 'attendance.manage', 'timetable.manage', 'studentdocs.manage'],
+        'students.bulk': ['attendance.manage', 'fees.manage', 'students.edit'],
+        'students.timetable': ['timetable.manage']
+    };
+
     document.querySelectorAll('[data-perm]').forEach(el => {
         const perm = el.getAttribute('data-perm');
+        
+        // Automatically translate old HTML tags to our new granular logic
+        if (permMap[perm]) {
+            const allowed = permMap[perm].some(p => hasPermission(p));
+            el.style.display = allowed ? '' : 'none';
+            return;
+        }
+        
         el.style.display = hasPermission(perm) ? '' : 'none';
     });
 }
@@ -1227,10 +1314,10 @@ function applyStatsPermissions() {
     const pendStats = document.getElementById('pendingApps')?.closest('.stat-card');
     const msgStats = document.getElementById('totalMsgs')?.closest('.stat-card');
     const unreadStats = document.getElementById('unreadMsgs')?.closest('.stat-card');
-    if (appStats) appStats.style.display = hasPermission('applications') ? '' : 'none';
-    if (pendStats) pendStats.style.display = hasPermission('applications') ? '' : 'none';
-    if (msgStats) msgStats.style.display = hasPermission('messages') ? '' : 'none';
-    if (unreadStats) unreadStats.style.display = hasPermission('messages') ? '' : 'none';
+    if (appStats) appStats.style.display = hasPermission('applications.view') ? '' : 'none';
+    if (pendStats) pendStats.style.display = hasPermission('applications.view') ? '' : 'none';
+    if (msgStats) msgStats.style.display = hasPermission('messages.view') ? '' : 'none';
+    if (unreadStats) unreadStats.style.display = hasPermission('messages.view') ? '' : 'none';
 }
 
 
@@ -1470,6 +1557,7 @@ document.getElementById('bulkUploadForm')?.addEventListener('submit', async (e) 
     try {
         const res = await fetch(`${API_URL}/student/bulk`, {
             method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
         const result = await res.json();
@@ -1579,6 +1667,7 @@ document.getElementById('resetStudentPwdForm')?.addEventListener('submit', async
 
 // 4. Export Students to CSV
 window.exportStudents = function() {
+    if (!hasPermission('students.export')) return alert('Permission denied');
     if (!allStudents || allStudents.length === 0) {
         return alert('No students to export.');
     }
@@ -1635,19 +1724,23 @@ function recordPayment(feeId, amount, paidSoFar, sid) {
     });
 }
 
-function editFee(feeId, feeType, amount, category, academicYear, sid) {
+function editFee(feeId, feeType, amount, discount, discountReason, category, academicYear, sid) {
     const newYear = prompt('Academic Year:', academicYear);
     if (newYear === null) return;
     const newType = prompt('Description:', feeType);
     if (newType === null) return;
     const newAmount = prompt('Total Amount ₹:', amount);
     if (newAmount === null) return;
+    const newDiscount = prompt('Discount Amount ₹ (Optional):', discount);
+    if (newDiscount === null) return;
+    const newDiscountReason = prompt('Discount Reason:', discountReason);
+    if (newDiscountReason === null) return;
     const newCategory = prompt('Category:', category);
     if (newCategory === null) return;
 
     fetch(`${STUDENT_ADMIN}/fees/${feeId}`, {
         method: 'PATCH', headers,
-        body: JSON.stringify({ academicYear: newYear, feeType: newType, amount: Number(newAmount), category: newCategory })
+        body: JSON.stringify({ academicYear: newYear, feeType: newType, amount: Number(newAmount), discount: Number(newDiscount) || 0, discountReason: newDiscountReason, category: newCategory })
     })
     .then(r => r.json())
     .then(result => {
@@ -1855,13 +1948,17 @@ async function loadBulkAttRows() {
         <p style="color:#6b7280;font-size:0.85rem">All Present by default. Change as needed.</p>
         <div style="display:grid;gap:0.4rem;max-height:300px;overflow-y:auto">
             ${students.map(s => `
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.7rem;background:#f9fafb;border-radius:8px">
-                    <span><strong>${escapeHtml(s.rollNumber)}</strong> - ${escapeHtml(s.name)}</span>
-                    <select id="batt-${s._id}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px">
-                        <option value="Present" ${(existing[s._id]||'Present')==='Present'?'selected':''}>Present</option>
-                        <option value="Absent" ${existing[s._id]==='Absent'?'selected':''}>Absent</option>
-                        <option value="Leave" ${existing[s._id]==='Leave'?'selected':''}>Leave</option>
-                    </select>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.7rem;background:#f9fafb;border-radius:8px;flex-wrap:wrap;gap:0.5rem">
+                    <span style="flex:1;min-width:150px"><strong>${escapeHtml(s.rollNumber)}</strong> - ${escapeHtml(s.name)}</span>
+                    <div style="display:flex;gap:0.5rem">
+                        <input id="batt-rem-${s._id}" placeholder="Remarks" value="${escapeHtml(existing[s._id]?.remarks || '')}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px;width:120px">
+                        <select id="batt-${s._id}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px">
+                            <option value="Present" ${(existing[s._id]?.status||'Present')==='Present'?'selected':''}>Present</option>
+                            <option value="Absent" ${existing[s._id]?.status==='Absent'?'selected':''}>Absent</option>
+                            <option value="Leave" ${existing[s._id]?.status==='Leave'?'selected':''}>Leave</option>
+                            <option value="Half-Day" ${existing[s._id]?.status==='Half-Day'?'selected':''}>Half-Day</option>
+                        </select>
+                    </div>
                 </div>
             `).join('')}
         </div>
@@ -1874,7 +1971,11 @@ async function submitBulkAttendanceNew() {
     if (!date) return alert('Select a date');
     const selected = [...document.querySelectorAll('.manage-student-cb:checked')];
     const students = selected.map(cb => classStudents.find(s => s._id === cb.value)).filter(Boolean);
-    const records = students.map(s => ({ studentId: s._id, status: document.getElementById(`batt-${s._id}`).value }));
+    const records = students.map(s => ({
+        studentId: s._id,
+        status: document.getElementById(`batt-${s._id}`).value,
+        remarks: document.getElementById(`batt-rem-${s._id}`).value
+    }));
 
     msg.innerHTML = '<span style="color:#2563eb">⏳ Saving...</span>';
     const res = await fetch(`${STUDENT_ADMIN}/attendance/bulk`, {
@@ -1911,6 +2012,10 @@ function showBulkFeeForm() {
             <input id="bfType" placeholder="Description (e.g. Annual Fee)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
             <input id="bfAmount" type="number" placeholder="Amount ₹" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+            <input id="bfDiscount" type="number" placeholder="Discount ₹ (Optional)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
+            <input id="bfDiscountReason" placeholder="Discount Reason (Optional)" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit">
+        </div>
         
         
         
@@ -1927,6 +2032,8 @@ function showBulkFeeForm() {
 async function submitBulkFee() {
     const feeType = document.getElementById('bfType').value.trim();
     const amount = document.getElementById('bfAmount').value;
+    const discount = document.getElementById('bfDiscount').value;
+    const discountReason = document.getElementById('bfDiscountReason').value;
     const msg = document.getElementById('bfMsg');
 
     if (!feeType || !amount) {
@@ -1947,6 +2054,8 @@ async function submitBulkFee() {
         category: document.getElementById('bfCategory').value,
         feeType,
         amount: Number(amount),
+        discount: Number(discount) || 0,
+        discountReason: discountReason || '',
         dueDate: document.getElementById('bfDue').value || null
     };
 
@@ -1995,20 +2104,31 @@ function onSelectionChange() {
     if (count === 1) {
         // Individual actions
         actions.innerHTML = `
-            <button class="sd-mini-btn" onclick="showManage('result')">📊 Add Result</button>
-            <button class="sd-mini-btn" onclick="showManage('attendance')">📅 Attendance</button>
-            <button class="sd-mini-btn" onclick="showManage('fee')">💰 Add Fee</button>
-            <button class="sd-mini-btn" onclick="showManage('doc')">📄 Upload Doc</button>
+            ${hasPermission('results.manage') ? `<button class="sd-mini-btn" onclick="showManage('result')">📊 Add Result</button>` : ''}
+            ${hasPermission('attendance.manage') ? `<button class="sd-mini-btn" onclick="showManage('attendance')">📅 Attendance</button>` : ''}
+            ${hasPermission('fees.manage') ? `<button class="sd-mini-btn" onclick="showManage('fee')">💰 Add Fee</button>` : ''}
+            ${hasPermission('studentdocs.manage') ? `<button class="sd-mini-btn" onclick="showManage('doc')">📄 Upload Doc</button>` : ''}
             <button class="sd-mini-btn" onclick="showManage('view')">👁️ View/Delete Data</button>
         `;
     } else {
         // Bulk actions only
         actions.innerHTML = `
-            <button class="sd-mini-btn" onclick="showBulkFeeForm()">💰 Bulk Assign Fee</button>
-            <button class="sd-mini-btn" onclick="showBulkPromoteForm()">🎓 Bulk Promote</button>
-            <button class="sd-mini-btn" onclick="showBulkAttendanceForm()">📅 Bulk Attendance</button>
+            ${hasPermission('results.manage') ? `<button class="sd-mini-btn" onclick="showBulkResultConfig()">📊 Bulk Results</button>` : ''}
+            ${hasPermission('fees.manage') ? `<button class="sd-mini-btn" onclick="showBulkFeeForm()">💰 Bulk Assign Fee</button>` : ''}
+            ${hasPermission('students.edit') ? `<button class="sd-mini-btn" onclick="showBulkPromoteForm()">🎓 Bulk Promote</button>` : ''}
+            ${hasPermission('attendance.manage') ? `<button class="sd-mini-btn" onclick="showBulkAttendanceForm()">📅 Bulk Attendance</button>` : ''}
+            ${hasPermission('studentdocs.manage') ? `<button class="sd-mini-btn" onclick="showBulkDocForm()">📄 Bulk Upload Doc</button>` : ''}
         `;
         forms.innerHTML = '';
+    }
+    
+    if (hasPermission('timetable.manage')) {
+        actions.innerHTML += `<button class="sd-mini-btn" onclick="showTimetableForm()">🗓️ Set Timetable</button>`;
+    }
+
+    // Globally append bulk delete if superadmin (works for both single and multiple selections)
+    if (adminInfo.role === 'superadmin') {
+        actions.innerHTML += `<button class="sd-mini-btn" style="background:#ef4444; margin-left:auto;" onclick="openBulkDeleteModal()">🗑️ Delete Selected</button>`;
     }
 }
 
@@ -2056,7 +2176,7 @@ async function loadAudit(page = 1) {
 
 
 async function loadTodayCollection() {
-    if (myRole !== 'superadmin') return;
+    if (!hasPermission('reports.view')) return;
     try {
         const res = await fetch(`${STUDENT_ADMIN}/today-collection`, { headers });
         const data = await res.json();
@@ -2403,7 +2523,235 @@ async function submitBulkPromote() {
     }
 }
 
+// ============ SUPERADMIN BULK DELETE ============
 
+function openBulkDeleteModal() {
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    if (selectedIds.length === 0) return alert('Select students first');
+    
+    document.getElementById('bulkDeleteCount').textContent = selectedIds.length;
+    document.getElementById('bulkDeletePwd').value = '';
+    document.getElementById('bulkDeleteMsg').innerHTML = '';
+    document.getElementById('bulkDeleteModal').classList.add('active');
+}
+
+document.getElementById('bulkDeleteForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = document.getElementById('bulkDeletePwd').value;
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    const msg = document.getElementById('bulkDeleteMsg');
+    const btn = document.getElementById('bulkDeleteForm').querySelector('button[type="submit"]');
+
+    if (!password) return msg.innerHTML = '<span style="color:#ef4444">❌ Enter password.</span>';
+
+    msg.innerHTML = '<span style="color:#2563eb">⏳ Deleting...</span>';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/students/bulk-delete`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ studentIds: selectedIds, password })
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+            msg.innerHTML = `<span style="color:#10b981">✅ ${result.message}</span>`;
+            setTimeout(() => {
+                document.getElementById('bulkDeleteModal').classList.remove('active');
+                document.getElementById('manageForms').innerHTML = '';
+                loadStudentsAdmin(); 
+                loadClassStudents(); 
+            }, 1500);
+        } else { msg.innerHTML = `<span style="color:#ef4444">❌ ${result.message}</span>`; }
+    } catch (error) { msg.innerHTML = '<span style="color:#ef4444">❌ Server error.</span>'; } 
+    finally { btn.disabled = false; }
+});
+
+// ============ BULK RESULTS ENTRY ============
+
+function showBulkResultConfig() {
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    if (selectedIds.length === 0) return alert('Select students first');
+    const cy = new Date().getFullYear();
+    const years = [`${cy-1}-${String(cy).slice(2)}`, `${cy}-${String(cy+1).slice(2)}`];
+    
+    const container = document.getElementById('manageForms');
+    container.innerHTML = `
+        <h4 style="color:#2563eb">📊 Bulk Results Entry (${selectedIds.length} students)</h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.5rem">
+            <input id="brExamName" placeholder="Exam Name (e.g. Term 1) *" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+            <input id="brExamDate" type="date" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.8rem">
+            <select id="brExamTerm" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                <option>Term 1</option><option>Term 2</option><option>Annual</option><option>Unit Test</option><option>Other</option>
+            </select>
+            <select id="brAcademicYear" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                ${years.map(y => `<option>${y}</option>`).join('')}
+            </select>
+        </div>
+        
+        <h5 style="margin-top:1rem;color:#374151;margin-bottom:0.5rem;">Define Subjects & Max Marks</h5>
+        <div id="brSubjectConfigs"></div>
+        <button class="sd-mini-btn" onclick="addBrSubjectConfig()" style="margin:0.5rem 0;background:#64748b;">+ Add Subject Column</button>
+        
+        <div style="margin-top:1rem">
+            <button class="btn btn-primary" style="width:100%" onclick="generateBulkResultGrid()">Generate Entry Grid ➔</button>
+        </div>
+    `;
+    addBrSubjectConfig(); // Start with one row
+}
+
+function addBrSubjectConfig() {
+    const div = document.createElement('div');
+    div.className = 'br-subj-config';
+    div.style = 'display:grid;grid-template-columns:2fr 1fr auto;gap:0.5rem;margin-bottom:0.5rem';
+    div.innerHTML = `
+        <input class="br-subj-name" placeholder="Subject Name (e.g. Math)" style="padding:0.5rem;border:2px solid #e5e7eb;border-radius:6px">
+        <input class="br-subj-max" type="number" placeholder="Max Marks" style="padding:0.5rem;border:2px solid #e5e7eb;border-radius:6px">
+        <button onclick="this.parentElement.remove()" style="background:#ef4444;color:white;border:none;border-radius:6px;cursor:pointer;padding:0 0.8rem">×</button>
+    `;
+    document.getElementById('brSubjectConfigs').appendChild(div);
+}
+
+let brSubjects = [];
+function generateBulkResultGrid() {
+    const examName = document.getElementById('brExamName').value.trim();
+    if (!examName) return alert('Enter Exam Name');
+    
+    brSubjects = [];
+    document.querySelectorAll('.br-subj-config').forEach(row => {
+        const name = row.querySelector('.br-subj-name').value.trim();
+        const max = row.querySelector('.br-subj-max').value;
+        if (name && max) brSubjects.push({ name, max: Number(max) });
+    });
+    
+    if (brSubjects.length === 0) return alert('Define at least one subject with max marks');
+    
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    const students = selectedIds.map(id => classStudents.find(s => s._id === id)).filter(Boolean);
+    const container = document.getElementById('manageForms');
+    
+    window.brMetaData = {
+        examName, term: document.getElementById('brExamTerm').value,
+        academicYear: document.getElementById('brAcademicYear').value,
+        examDate: document.getElementById('brExamDate').value || null
+    };
+    
+    container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h4 style="color:#2563eb; margin:0;">📝 Enter Marks: ${escapeHtml(examName)}</h4>
+            <button class="sd-mini-btn" style="background:#6b7280" onclick="showBulkResultConfig()">← Back</button>
+        </div>
+        <div style="overflow-x:auto; margin-top:1rem; border:1px solid #e5e7eb; border-radius:8px;">
+            <table style="width:100%; border-collapse:collapse; min-width:600px;">
+                <thead style="background:#f8fafc;">
+                    <tr>
+                        <th style="padding:0.8rem; text-align:left; border-bottom:2px solid #e2e8f0; position:sticky; left:0; background:#f8fafc; z-index:1;">Student</th>
+                        ${brSubjects.map(s => `<th style="padding:0.8rem; text-align:center; border-bottom:2px solid #e2e8f0;">${escapeHtml(s.name)}<br><small style="color:#6b7280">Max: ${s.max}</small></th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${students.map(s => `
+                        <tr class="br-student-row" data-sid="${s._id}" style="border-bottom:1px solid #f1f5f9;">
+                            <td style="padding:0.8rem; font-weight:600; position:sticky; left:0; background:white; z-index:1; border-right:1px solid #f1f5f9; min-width:150px;">${escapeHtml(s.rollNumber)} - ${escapeHtml(s.name.substring(0, 15))}</td>
+                            ${brSubjects.map((sub, i) => `
+                                <td style="padding:0.5rem; text-align:center;">
+                                    <input type="number" class="br-marks-input" data-sub-idx="${i}" max="${sub.max}" style="width:70px; padding:0.4rem; border:2px solid #e2e8f0; border-radius:6px; text-align:center;">
+                                </td>
+                            `).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+        <button class="btn btn-primary" style="margin-top:1rem; width:100%" onclick="submitBulkResults()">💾 Save All Results</button>
+        <div id="brMsg" style="margin-top:0.5rem"></div>
+    `;
+}
+
+async function submitBulkResults() {
+    const records = [];
+    let hasErrors = false;
+    document.querySelectorAll('.br-student-row').forEach(row => {
+        const studentId = row.getAttribute('data-sid');
+        const subjects = [];
+        row.querySelectorAll('.br-marks-input').forEach(input => {
+            const idx = input.getAttribute('data-sub-idx');
+            const max = brSubjects[idx].max;
+            const obt = input.value;
+            if (obt !== '') {
+                const numObt = Number(obt);
+                if (numObt > max || numObt < 0) hasErrors = true;
+                subjects.push({ subject: brSubjects[idx].name, totalMarks: max, marksObtained: numObt });
+            }
+        });
+        if (subjects.length > 0) records.push({ studentId, subjects });
+    });
+    
+    if (hasErrors) return alert('Some marks entered exceed the maximum marks defined!');
+    if (records.length === 0) return alert('No marks entered!');
+    
+    const msg = document.getElementById('brMsg');
+    msg.innerHTML = '<span style="color:#2563eb">⏳ Saving all results...</span>';
+    
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/results/bulk`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ ...window.brMetaData, records })
+        });
+        const result = await res.json();
+        if (result.success) {
+            msg.innerHTML = `<span style="color:#065f46">✅ ${result.message}</span>`;
+            setTimeout(() => document.getElementById('manageForms').innerHTML = '', 1500);
+        } else {
+            msg.innerHTML = `<span style="color:#991b1b">❌ ${result.message}</span>`;
+        }
+    } catch (e) { msg.innerHTML = '<span style="color:#991b1b">❌ Server error</span>'; }
+}
+
+// ============ BULK DOC UPLOAD ============
+
+function showBulkDocForm() {
+    const selectedIds = [...document.querySelectorAll('.manage-student-cb:checked')].map(cb => cb.value);
+    if (selectedIds.length === 0) return alert('Select students first');
+
+    const container = document.getElementById('manageForms');
+    container.innerHTML = `
+        <h4 style="color:#2563eb">📄 Bulk Upload Document (${selectedIds.length} students)</h4>
+        <p style="color:#6b7280;font-size:0.9rem;margin-bottom:0.8rem">This document will be distributed to all selected students instantly.</p>
+        <form id="bulkDocForm" style="display:grid;gap:1rem">
+            <input id="bulkDocTitle" placeholder="Document Title (e.g. Syllabus) *" required style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit;">
+            <input type="file" id="bulkDocFile" accept=".pdf,.doc,.docx,.xls,.xlsx" required style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;background:white;font-family:inherit;">
+            <button type="submit" class="btn btn-primary" style="justify-self:start">Upload to Selected Students</button>
+        </form>
+        <div id="bulkDocMsg" style="margin-top:0.5rem"></div>
+    `;
+
+    document.getElementById('bulkDocForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = document.getElementById('bulkDocTitle').value.trim();
+        const file = document.getElementById('bulkDocFile').files[0];
+        const msg = document.getElementById('bulkDocMsg');
+        const btn = document.getElementById('bulkDocForm').querySelector('button');
+
+        if (!title || !file) return;
+        btn.disabled = true;
+        msg.innerHTML = '<span style="color:#2563eb">⏳ Uploading and assigning...</span>';
+
+        const fd = new FormData();
+        fd.append('title', title);
+        fd.append('file', file);
+        fd.append('studentIds', JSON.stringify(selectedIds));
+
+        try {
+            const res = await fetch(`${STUDENT_ADMIN}/documents/bulk`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
+            const r = await res.json();
+            if (r.success) { msg.innerHTML = `<span style="color:#065f46">✅ ${r.message}</span>`; setTimeout(() => document.getElementById('manageForms').innerHTML = '', 1500); } 
+            else { msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`; }
+        } catch (err) { msg.innerHTML = '<span style="color:#991b1b">❌ Server error</span>'; } finally { btn.disabled = false; }
+    });
+}
 
 // call it once on load — add near your other initial calls at the bottom:
 loadTodayCollection();

@@ -8,47 +8,58 @@
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { background: #f3f4f6; margin: 0; font-family: 'Poppins', sans-serif; }
+        body {
+            background: linear-gradient(135deg, rgba(241, 245, 249, 0.88) 0%, rgba(255, 255, 255, 0.92) 100%), 
+                        url('https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0; font-family: 'Poppins', sans-serif; 
+        }
         .admin-container { max-width: 1400px; margin: auto; padding: 2rem; }
         .admin-header {
             display: flex; justify-content: space-between; align-items: center;
-            background: white; padding: 1.5rem 2rem; border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            padding: 1.5rem 2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 10px 30px -10px rgba(37, 99, 235, 0.15); margin-bottom: 2rem;
         }
         .admin-header h1 { margin: 0; color: #2563eb; }
         .admin-info { display: flex; align-items: center; gap: 1rem; }
         .logout-btn {
-            padding: 0.5rem 1.5rem; background: #ef4444; color: white;
+            padding: 0.6rem 1.8rem; background: linear-gradient(135deg, #ef4444, #dc2626); color: white;
             border: none; border-radius: 50px; cursor: pointer; font-weight: 600;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); transition: all 0.3s ease;
         }
-        .logout-btn:hover { background: #dc2626; }
+        .logout-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4); }
         .stats-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem; margin-bottom: 2rem;
         }
         .stat-card {
-            background: white; padding: 1.5rem; border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 1.8rem 1.5rem; 
+            border-radius: 20px; border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px); box-shadow: 0 20px 35px -5px rgba(37, 99, 235, 0.1); border-color: #bfdbfe;
         }
         .stat-card h3 { color: #2563eb; font-size: 2.5rem; margin: 0; }
         .stat-card p { color: #6b7280; margin: 0.5rem 0 0; }
-        .tabs { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .tabs { display: inline-flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; background: #e2e8f0; padding: 0.4rem; border-radius: 14px; }
         .tab-btn {
-            padding: 0.8rem 1.5rem; border: none; background: white;
-            border-radius: 8px; cursor: pointer; font-weight: 600;
-            font-family: inherit; font-size: 1rem;
+            padding: 0.7rem 1.4rem; border: none; background: transparent; color: #475569;
+            border-radius: 10px; cursor: pointer; font-weight: 600; font-family: inherit; font-size: 0.95rem; transition: all 0.3s ease;
         }
-        .tab-btn.active { background: #2563eb; color: white; }
+        .tab-btn:hover { color: #1e293b; }
+        .tab-btn.active { background: white; color: #2563eb; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); }
         .table-container {
-            background: white; border-radius: 10px; overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08); overflow-x: auto;
+            background: white; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05); overflow-x: auto;
         }
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table th {
-            background: #2563eb; color: white; padding: 1rem; text-align: left;
-            font-weight: 600;
+            background: #f1f5f9; color: #475569; padding: 1rem; text-align: left;
+            font-weight: 700; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; border-bottom: 2px solid #e2e8f0;
         }
-        .data-table td { padding: 1rem; border-bottom: 1px solid #eee; }
+        .data-table td { padding: 1.2rem 1rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
         .data-table tr:hover { background: #f9fafb; }
         .status-select {
             padding: 0.4rem 0.8rem; border-radius: 20px; border: none;
@@ -75,8 +86,9 @@
         }
         .modal.active { display: flex; }
         .modal-content {
-            background: white; padding: 2rem; border-radius: 10px;
+            background: white; padding: 2.5rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.4);
             max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
         }
         .modal-close {
             float: right; cursor: pointer; font-size: 1.5rem;
@@ -86,8 +98,8 @@
         .detail-row strong { color: #2563eb; display: inline-block; min-width: 150px; }
 
         .search-bar {
-            background: white; padding: 1rem; border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 1rem;
+            background: white; padding: 1rem; border-radius: 16px; border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05); margin-bottom: 1rem;
             display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
         }
         .search-icon { font-size: 1.2rem; }
@@ -112,6 +124,12 @@
         @media (max-width: 600px) {
             .search-bar { flex-direction: column; align-items: stretch; }
             #searchInput, #filterStatus, .clear-btn { width: 100%; }
+            .admin-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .admin-info { flex-direction: column; align-items: stretch; width: 100%; gap: 0.5rem; }
+            .logout-btn, #changePwdBtn { width: 100%; margin: 0 !important; }
+            .tabs { display: grid; grid-template-columns: 1fr; gap: 0.5rem; }
+            div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
+            .modal-content { width: 95%; padding: 1.5rem; }
         }
 
         .gallery-admin-grid {
@@ -661,6 +679,23 @@
                 </div>
                 <button type="submit" class="btn" style="background:#ef4444;color:white;justify-self:start;">Confirm Reset</button>
                 <div id="resetStudentPwdMsg" style="margin-top:0.5rem"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Student Modal (Superadmin only) -->
+    <div id="bulkDeleteModal" class="modal">
+        <div class="modal-content" style="max-width:400px;">
+            <button class="modal-close" onclick="document.getElementById('bulkDeleteModal').classList.remove('active')">×</button>
+            <h2 style="color:#ef4444;margin-top:0">⚠️ Bulk Delete</h2>
+            <p style="color:#6b7280;margin-bottom:1rem;">You are about to permanently delete <strong id="bulkDeleteCount">0</strong> students and ALL their history (fees, results, attendance).<br><br>This cannot be undone!</p>
+            <form id="bulkDeleteForm" style="display:grid;gap:1rem">
+                <div>
+                    <label style="font-weight:600;display:block;margin-bottom:0.3rem">Superadmin Password *</label>
+                    <input type="password" id="bulkDeletePwd" required placeholder="Enter your password..." style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                </div>
+                <button type="submit" class="btn" style="background:#ef4444;color:white;justify-self:start;">Confirm Delete</button>
+                <div id="bulkDeleteMsg" style="margin-top:0.5rem"></div>
             </form>
         </div>
     </div>

@@ -144,6 +144,70 @@ if (admissionForm) {
     });
 }
 
+// Popup Admission Form Logic
+document.addEventListener('DOMContentLoaded', () => {
+    const popup = document.getElementById('admissionPopup');
+    if (popup) {
+        const currentDate = new Date();
+        // Show for the next 2 months (Expires Aug 14, 2026)
+        const expiryDate = new Date('2026-08-14'); 
+        const hasSeenPopup = sessionStorage.getItem('admissionPopupSeen');
+
+        if (currentDate <= expiryDate && !hasSeenPopup) {
+            setTimeout(() => {
+                popup.style.display = 'flex';
+                sessionStorage.setItem('admissionPopupSeen', 'true');
+            }, 2000); // Wait 2 seconds after page load
+        }
+        
+        // Close on background click
+        popup.addEventListener('click', (e) => {
+            if (e.target.id === 'admissionPopup') popup.style.display = 'none';
+        });
+    }
+});
+
+const popupAdmissionForm = document.getElementById('popupAdmissionForm');
+if (popupAdmissionForm) {
+    popupAdmissionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(popupAdmissionForm);
+        const data = Object.fromEntries(formData);
+        const msg = document.getElementById('popupFormMessage');
+        
+        const submitBtn = popupAdmissionForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+
+        try {
+            const response = await fetch(`${API_URL}/applications`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            msg.style.display = 'block';
+            if (result.success) {
+                msg.style.background = '#d1fae5'; msg.style.color = '#065f46';
+                msg.textContent = '✅ Application submitted successfully!';
+                popupAdmissionForm.reset();
+                setTimeout(() => document.getElementById('admissionPopup').style.display = 'none', 3000);
+            } else {
+                msg.style.background = '#fee2e2'; msg.style.color = '#991b1b';
+                msg.textContent = '❌ ' + (result.message || 'Submission failed');
+            }
+        } catch (error) {
+            msg.style.display = 'block';
+            msg.style.background = '#fee2e2'; msg.style.color = '#991b1b';
+            msg.textContent = '❌ Server error.';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    });
+}
+
 // Contact Form - Now connects to backend!
 const contactForm = document.getElementById('contactForm');
 if (contactForm) {

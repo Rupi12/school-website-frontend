@@ -56,6 +56,23 @@ async function downloadMyReceipt(receiptNo) {
   }
 }
 
+async function downloadReportCard(resultId) {
+    try {
+        const token = localStorage.getItem('studentToken');
+        const res = await fetch(`${API_URL}/student/results/${resultId}/pdf`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Backend Status ${res.status}. Did you restart the server?`);
+        }
+        const blob = new Blob([await res.arrayBuffer()], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank');
+    } catch (e) {
+        alert('PDF Error: ' + e.message);
+    }
+}
+
 async function loadResults() {
     const panel = document.getElementById('results-panel');
     try {
@@ -121,6 +138,7 @@ function renderResults() {
                 <span>Grade: <span style="color:#2563eb">${grade}</span></span>
             </div>
             ${r.remark ? `<p style="margin-top:0.8rem;color:#6b7280;font-style:italic">📝 ${esc(r.remark)}</p>` : ''}
+            <button class="sd-mini-btn" style="background:#10b981; color:white; margin-top:1rem; border:none; padding:0.6rem 1.2rem; border-radius:8px; font-weight:600; cursor:pointer;" onclick="downloadReportCard('${r._id}')">📄 Download Report Card</button>
         </div>
         `;
     }).join('') || '<p>No results for this year.</p>';
@@ -182,7 +200,7 @@ function filterAttendance() {
     }
 
     document.getElementById('attBody').innerHTML = filtered.length
-        ? filtered.map(a => `<tr><td>${new Date(a.date).toLocaleDateString()}</td><td><span class="badge ${a.status.toLowerCase()}">${a.status}</span></td></tr>`).join('')
+        ? filtered.map(a => `<tr><td>${new Date(a.date).toLocaleDateString()}</td><td><span class="badge ${a.status.toLowerCase()}">${a.status}</span>${a.remarks ? `<div style="color:#6b7280;font-size:0.8rem;margin-top:0.2rem">${esc(a.remarks)}</div>` : ''}</td></tr>`).join('')
         : '<tr><td colspan="2">No records</td></tr>';
 }
 
@@ -191,17 +209,74 @@ async function loadTimetable() {
     try {
         const res = await fetch(`${API_URL}/student/timetable`, { headers });
         const data = await res.json();
-        if (!data.timetable) { panel.innerHTML = '<p>No timetable set.</p>'; return; }
-        panel.innerHTML = data.timetable.schedule.map(day => `
-            <h3 style="color:#2563eb">${esc(day.day)}</h3>
-            <table style="margin-bottom:1rem">
-                <thead><tr><th>Time</th><th>Subject</th><th>Teacher</th></tr></thead>
+        if (!data.timetable || !data.timetable.schedule || data.timetable.schedule.length === 0) { 
+            panel.innerHTML = '<p>No timetable set for your class.</p>'; 
+            return; 
+        }
+        
+        window.studentTimetable = data.timetable.schedule;
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        
+        let defaultDay = data.timetable.schedule.some(d => d.day.trim() === today) ? today : data.timetable.schedule[0].day.trim();
+
+        panel.innerHTML = `
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; justify-content:center;">
+                ${days.map(d => {
+                    const hasData = data.timetable.schedule.some(s => s.day.trim() === d);
+                    if (!hasData) return '';
+                    return `<button class="sd-tab tt-day-btn ${d === defaultDay ? 'active' : ''}" onclick="showTimetableDay('${d}', this)" style="border-radius:20px; padding:0.5rem 1.2rem; background:${d === defaultDay ? '#2563eb' : '#f1f5f9'}; color:${d === defaultDay ? 'white' : '#475569'}; border:none; cursor:pointer; font-weight:600; transition:0.3s;">${d}</button>`;
+                }).join('')}
+            </div>
+            <div id="tt-day-content"></div>
+        `;
+        
+        // Auto-load the default day
+        showTimetableDay(defaultDay, null);
+    } catch (e) { panel.innerHTML = '<p>Error loading timetable.</p>'; }
+}
+
+window.showTimetableDay = function(day, btn) {
+    if (btn) {
+        document.querySelectorAll('.tt-day-btn').forEach(b => {
+            b.style.background = '#f1f5f9';
+            b.style.color = '#475569';
+            b.classList.remove('active');
+        });
+        btn.style.background = '#2563eb';
+        btn.style.color = 'white';
+        btn.classList.add('active');
+    }
+        const dayData = window.studentTimetable.find(d => d.day.trim() === day.trim());
+    const container = document.getElementById('tt-day-content');
+    
+    if (!dayData || dayData.periods.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#6b7280; padding:2rem;">No classes scheduled for this day.</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div style="background:white; border:1px solid #e2e8f0; border-radius:15px; overflow:hidden; box-shadow:0 4px 15px rgba(0,0,0,0.03);">
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f8fafc;">
+                        <th style="padding:1rem; text-align:left; color:#475569; font-weight:700; border-bottom:2px solid #e2e8f0;">Time</th>
+                        <th style="padding:1rem; text-align:left; color:#475569; font-weight:700; border-bottom:2px solid #e2e8f0;">Subject</th>
+                        <th style="padding:1rem; text-align:left; color:#475569; font-weight:700; border-bottom:2px solid #e2e8f0;">Teacher</th>
+                    </tr>
+                </thead>
                 <tbody>
-                    ${day.periods.map(p => `<tr><td>${esc(p.time)}</td><td>${esc(p.subject)}</td><td>${esc(p.teacher)}</td></tr>`).join('')}
+                    ${dayData.periods.map(p => `
+                        <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                            <td style="padding:1rem; color:#1e293b; font-weight:600;">${esc(p.time)}</td>
+                            <td style="padding:1rem; color:#3b82f6; font-weight:600;">${esc(p.subject)}</td>
+                            <td style="padding:1rem; color:#475569;">${esc(p.teacher)}</td>
+                        </tr>
+                    `).join('')}
                 </tbody>
             </table>
-        `).join('');
-    } catch (e) { panel.innerHTML = '<p>Error loading timetable.</p>'; }
+        </div>
+    `;
 }
 
 
@@ -243,15 +318,18 @@ async function loadMyFees() {
                         <span style="color:#6b7280"> — ${escapeHtml(f.feeType)}</span>
                         ${isOverdue ? '<span style="color:#ef4444;font-weight:600;font-size:0.85rem"> ⚠️ Overdue</span>' : ''}
                     </div>
-                    <span style="font-weight:600">
-                        ₹${f.totalPaid} / ₹${f.amount}
-                        <span style="padding:2px 8px;border-radius:12px;font-size:0.78rem;margin-left:0.4rem;
-                            background:${f.status==='Paid'?'#d1fae5':'#fef3c7'};color:${f.status==='Paid'?'#065f46':'#92400e'}">
-                            ${f.status}
-                        </span>
+                    <span style="padding:2px 8px;border-radius:12px;font-size:0.78rem;font-weight:600;
+                        background:${f.status==='Paid'?'#d1fae5':'#fef3c7'};color:${f.status==='Paid'?'#065f46':'#92400e'}">
+                        ${f.status}
                     </span>
                 </div>
-                ${f.pending > 0 ? `<div style="color:#92400e;font-size:0.85rem;margin-top:0.3rem">Pending: ₹${f.pending}</div>` : ''}
+                <div style="font-size:0.85rem;color:#4b5563;margin-top:0.5rem;">
+                    Total Fee: ₹${f.amount} 
+                    ${f.discount > 0 ? ` | <span style="color:#10b981;">Discount: -₹${f.discount} ${f.discountReason ? `(${escapeHtml(f.discountReason)})` : ''}</span> | Net Fee: ₹${f.amount - (f.discount || 0)}` : ''}
+                </div>
+                <div style="font-size:0.85rem;color:#4b5563;margin-top:0.2rem;">
+                    Paid: ₹${f.totalPaid} | <span style="color:${f.pending > 0 ? '#92400e' : '#065f46'}">Pending: ₹${f.pending}</span>
+                </div>
                 ${history}
             </div>`;
         }).join('');
@@ -268,9 +346,9 @@ async function loadFees() {
         const data = await res.json();
         if (!data.success || !data.fees.length) { panel.innerHTML = '<p>No fee records yet.</p>'; return; }
 
-        let totalDue = 0, totalPaid = 0;
-        data.fees.forEach(f => { totalDue += f.amount; totalPaid += f.totalPaid; });
-        const pending = totalDue - totalPaid;
+        let totalDue = 0, totalPaid = 0, totalDiscount = 0;
+        data.fees.forEach(f => { totalDue += f.amount; totalPaid += f.totalPaid; totalDiscount += f.discount || 0; });
+        const pending = (totalDue - totalDiscount) - totalPaid;
         const allPaid = pending <= 0;
 
         panel.innerHTML = `
@@ -281,7 +359,11 @@ async function loadFees() {
                 <div style="font-size:2.6rem;font-weight:800;color:${allPaid ? '#065f46' : '#991b1b'};margin:0.2rem 0">
                     ${allPaid ? '✅' : '₹' + pending}
                 </div>
-                <div style="color:#6b7280;font-size:0.9rem">Paid ₹${totalPaid} of ₹${totalDue}</div>
+                <div style="color:#6b7280;font-size:0.9rem;margin-top:0.5rem">
+                    Total Fees: ₹${totalDue} 
+                    ${totalDiscount > 0 ? `| <span style="color:#10b981;">Discount: -₹${totalDiscount}</span> | Net: ₹${totalDue - totalDiscount}` : ''}
+                    <br>Paid: ₹${totalPaid}
+                </div>
                 <button type="button" onclick="downloadMyNOC()"
     style="margin-top:1rem;background:#15803d;color:#fff;border:none;border-radius:8px;padding:0.6rem 1.4rem;font-weight:600;cursor:pointer;font-family:inherit">
     📜 Download Fee NOC
@@ -290,6 +372,7 @@ async function loadFees() {
 
             <!-- FEE CARDS -->
             ${data.fees.map((f, i) => {
+                const netAmount = f.amount - (f.discount || 0);
                 const isOverdue = f.dueDate && new Date(f.dueDate) < new Date() && f.status !== 'Paid';
                 const paidThis = f.status === 'Paid';
                 const statusColor = paidThis ? '#10b981' : (isOverdue ? '#ef4444' : '#f59e0b');
@@ -318,16 +401,20 @@ async function loadFees() {
                         <span style="font-weight:700;font-size:0.85rem;color:${statusColor}">${statusText}</span>
                     </div>
 
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:0.8rem">
-                        <span style="color:#6b7280;font-size:0.9rem">Paid ₹${f.totalPaid} / ₹${f.amount}</span>
-                        <span style="font-weight:700;color:${f.pending > 0 ? '#991b1b' : '#065f46'}">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:0.8rem">
+                        <span style="color:#6b7280;font-size:0.85rem">
+                            Total: ₹${f.amount} 
+                            ${f.discount > 0 ? `<br><span style="color:#10b981;">Discount: -₹${f.discount}</span> | Net: ₹${netAmount}` : ''}
+                            <br>Paid: ₹${f.totalPaid}
+                        </span>
+                        <span style="font-weight:700;color:${f.pending > 0 ? '#991b1b' : '#065f46'};text-align:right">
                             ${f.pending > 0 ? '₹' + f.pending + ' due' : 'Cleared'}
                         </span>
                     </div>
 
                     <!-- progress bar -->
                     <div style="height:8px;background:#f3f4f6;border-radius:8px;margin-top:0.5rem;overflow:hidden">
-                        <div style="height:100%;width:${Math.min(100, (f.totalPaid / f.amount) * 100)}%;background:${statusColor};border-radius:8px"></div>
+                        <div style="height:100%;width:${Math.min(100, (f.totalPaid / netAmount) * 100)}%;background:${statusColor};border-radius:8px"></div>
                     </div>
 
                     ${f.payments.length ? `
