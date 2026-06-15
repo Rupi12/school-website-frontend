@@ -250,7 +250,7 @@ function closeModal() {
 function showTab(tab, btn) {
     currentTab = tab;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    if (btn) btn.classList.add('active');
 
     document.getElementById('applications-tab').classList.toggle('hidden', tab !== 'applications');
     document.getElementById('messages-tab').classList.toggle('hidden', tab !== 'messages');
@@ -271,9 +271,7 @@ function showTab(tab, btn) {
     if (tab === 'students') { 
         loadStudentsAdmin(); loadClasses(); 
         const firstVisibleStudentTab = [...document.querySelectorAll('.student-sub-tab-btn')].find(b => b.style.display !== 'none');
-        if (firstVisibleStudentTab) {
-            firstVisibleStudentTab.click();
-        }
+        if (firstVisibleStudentTab) firstVisibleStudentTab.click();
     }
     if (tab === 'documents') loadDocsAdmin();
     if (tab === 'gallery') loadGalleryAdmin();
@@ -284,18 +282,12 @@ function showTab(tab, btn) {
             loadPendingStaffAttendanceRequests(); 
             loadStaffAttendanceToday();
         }
-        
-        // Automatically open the first section the user is permitted to see
         const firstVisibleStaffTab = [...document.querySelectorAll('.staff-sub-tab-btn')].find(b => b.style.display !== 'none');
-        if (firstVisibleStaffTab) {
-            firstVisibleStaffTab.click();
-        }
+        if (firstVisibleStaffTab) firstVisibleStaffTab.click();
     }
     if (tab === 'teacher-workspace') { 
         const firstVisibleWorkspaceTab = [...document.querySelectorAll('.workspace-sub-tab-btn')].find(b => b.style.display !== 'none');
-        if (firstVisibleWorkspaceTab) {
-            firstVisibleWorkspaceTab.click();
-        }
+        if (firstVisibleWorkspaceTab) firstVisibleWorkspaceTab.click();
     }
 
     // Hide forms based on granular permissions
@@ -313,9 +305,9 @@ function showTab(tab, btn) {
     document.querySelectorAll('[data-perm="applications.export"]').forEach(el => el.style.display = hasPermission('applications.export') ? '' : 'none');
     document.querySelectorAll('[data-perm="students.export"]').forEach(el => el.style.display = hasPermission('students.export') ? '' : 'none');
 
-    const searchBar = document.getElementById('globalSearchBar');
+    const searchBar = document.getElementById('globalSearchBar') || document.querySelector('.search-bar');
     if (searchBar) {
-        const tabsWithSearch = ['applications', 'messages', 'audit', 'report'];
+        const tabsWithSearch = ['applications', 'messages'];
         searchBar.style.display = tabsWithSearch.includes(tab) ? 'flex' : 'none';
     }
 
@@ -334,76 +326,54 @@ function showTab(tab, btn) {
 }
 
 window.showStaffSubTab = function(tab, btn) {
-    // Reset buttons
-    document.querySelectorAll('.staff-sub-tab-btn').forEach(b => {
-        b.style.background = 'transparent';
-        b.style.color = '#475569';
-        b.classList.remove('active');
-    });
-    if (btn) {
-        btn.style.background = '#2563eb';
-        btn.style.color = 'white';
-        btn.classList.add('active');
-    }
-    // Hide all sections
+    document.querySelectorAll('.staff-sub-tab-btn').forEach(b => { b.style.background = 'transparent'; b.style.color = '#475569'; b.classList.remove('active'); });
+    if (btn) { btn.style.background = '#2563eb'; btn.style.color = 'white'; btn.classList.add('active'); }
     ['staff-list-sec', 'staff-create-sec', 'staff-approvals-sec', 'staff-roster-sec', 'staff-history-sec', 'staff-payroll-sec'].forEach(sec => {
-        const el = document.getElementById(sec);
-        if (el) el.classList.add('hidden');
+        const el = document.getElementById(sec); if (el) el.classList.add('hidden');
     });
-    // Show target section
     const target = document.getElementById(tab + '-sec');
     if (target) target.classList.remove('hidden');
+
+    // Auto-initialize and load History when the tab is clicked
+    if (tab === 'staff-history') {
+        const monthInput = document.getElementById('historyMonthSelect');
+        if (monthInput && !monthInput.value) {
+            const now = new Date();
+            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+        if (document.getElementById('historyStaffSelect')?.value && typeof loadStaffHistory === 'function') loadStaffHistory();
+    }
+
+    if (tab === 'staff-payroll') {
+        if (typeof loadPayrollAdmin === 'function') loadPayrollAdmin();
+    }
 };
 
 window.showWorkspaceSubTab = function(tab, btn) {
-    // Reset buttons
-    document.querySelectorAll('.workspace-sub-tab-btn').forEach(b => {
-        b.style.background = 'transparent';
-        b.style.color = '#475569';
-        b.classList.remove('active');
-    });
-    if (btn) {
-        btn.style.background = '#2563eb';
-        btn.style.color = 'white';
-        btn.classList.add('active');
-    }
-    // Hide all sections
+    document.querySelectorAll('.workspace-sub-tab-btn').forEach(b => { b.style.background = 'transparent'; b.style.color = '#475569'; b.classList.remove('active'); });
+    if (btn) { btn.style.background = '#2563eb'; btn.style.color = 'white'; btn.classList.add('active'); }
     ['workspace-attendance-sec', 'workspace-payroll-sec'].forEach(sec => {
-        const el = document.getElementById(sec);
-        if (el) el.classList.add('hidden');
+        const el = document.getElementById(sec); if (el) el.classList.add('hidden');
     });
-    // Show target section
     const target = document.getElementById(tab + '-sec');
     if (target) target.classList.remove('hidden');
 
     if (tab === 'workspace-attendance') {
         const dInput = document.getElementById('selfAttDate');
         if (dInput && !dInput.value) dInput.value = new Date().toISOString().split('T')[0];
-        loadMyStaffAttendance(); 
+        if (typeof loadMyStaffAttendance === 'function') loadMyStaffAttendance(); 
     }
     if (tab === 'workspace-payroll') {
-        loadMySalarySlips();
+        if (typeof loadMySalarySlips === 'function') loadMySalarySlips();
     }
 };
 
 window.showStudentSubTab = function(tab, btn) {
-    // Reset buttons
-    document.querySelectorAll('.student-sub-tab-btn').forEach(b => {
-        b.style.background = 'transparent';
-        b.style.color = '#475569';
-        b.classList.remove('active');
-    });
-    if (btn) {
-        btn.style.background = '#2563eb';
-        btn.style.color = 'white';
-        btn.classList.add('active');
-    }
-    // Hide all sections
+    document.querySelectorAll('.student-sub-tab-btn').forEach(b => { b.style.background = 'transparent'; b.style.color = '#475569'; b.classList.remove('active'); });
+    if (btn) { btn.style.background = '#2563eb'; btn.style.color = 'white'; btn.classList.add('active'); }
     ['student-list-sec', 'student-add-sec', 'student-manage-sec'].forEach(sec => {
-        const el = document.getElementById(sec);
-        if (el) el.classList.add('hidden');
+        const el = document.getElementById(sec); if (el) el.classList.add('hidden');
     });
-    // Show target section
     const target = document.getElementById(tab + '-sec');
     if (target) target.classList.remove('hidden');
 };
@@ -710,21 +680,21 @@ const LIST_PER_PAGE = 20;
 async function loadStudentsAdmin(page = 1) {
     listPage = page;
     try {
+    const list = document.getElementById('adminStudentList');
+        if (list) list.innerHTML = '<p>Loading...</p>';
+
         const classFilter = document.getElementById('listClassFilter')?.value || '';
         const search = document.getElementById('listSearch')?.value || '';
         
-        const list = document.getElementById('adminStudentList');
-        if (list) list.innerHTML = '<p>Loading...</p>';
-
         const params = new URLSearchParams({ page: listPage, limit: LIST_PER_PAGE });
         if (classFilter) params.append('class', classFilter);
         if (search) params.append('search', search);
-
+        
         const res = await fetch(`${STUDENT_ADMIN}/students?${params}`, { headers });
         const data = await res.json();
         if (!data.success) return;
         
-        allStudents = data.students; // only current page
+        allStudents = data.students; 
         renderStudentListFromServer(data);
     } catch (e) { console.error(e); }
 }
@@ -758,6 +728,7 @@ function renderStudentListFromServer(data) {
         <button class="sd-mini-btn" ${data.page===data.pages?'disabled':''} onclick="loadStudentsAdmin(${data.page+1})">Next ›</button>
     `;
 }
+
 
 const studentForm = document.getElementById('studentForm');
 if (studentForm) {
@@ -842,7 +813,6 @@ async function loadClassStudents() {
             <button class="sd-mini-btn" onclick="showTimetableForm()">🗓️ Set Timetable for Class ${escapeHtml(selectedCls)}</button>
         ` : '';
         classActions.style.display = 'block';
-        classActions.style.display = 'none';
     }
 }
 
@@ -1376,7 +1346,7 @@ function applyTabPermissions() {
             return;
         }
         if (tab === 'teacher-workspace') {
-            btn.style.display = (myRole !== 'superadmin') ? '' : 'none'; // ALL teachers see their workspace
+            btn.style.display = (myRole !== 'superadmin') ? '' : 'none'; // Hide from Superadmins
             return;
         }
         const req = tabMap[tab];
@@ -1451,12 +1421,8 @@ async function loadAdmins() {
                     </div>
                     ${a.role !== 'superadmin' ? `
                         <div>
-                            ${(hasPermission('staff.edit.profile') || hasPermission('staff.edit.permissions') || hasPermission('staff.reset.password')) ?
-                                `<button class="action-btn btn-view" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit</button>` : ''
-                            }
-                            ${hasPermission('staff.delete') ?
-                                `<button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>` : ''
-                            }
+                            <button class="action-btn btn-view" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit</button>
+                            <button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>
                         </div>
                     ` : ''}
                 </div>
@@ -1490,18 +1456,16 @@ async function loadAdmins() {
 function renderPermCheckboxes() {
     const el = document.getElementById('permCheckboxes');
     if (!el) return;
-
+    
     const grouped = ALL_PERMISSIONS.reduce((acc, p) => {
         acc[p.category] = acc[p.category] || [];
         acc[p.category].push(p);
         return acc;
     }, {});
-
     el.innerHTML = Object.entries(grouped).map(([category, perms]) => `
         <div>
             <div class="perm-category" onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('span').textContent = this.querySelector('span').textContent === '▼' ? '▶' : '▼';">
-                ${category}
-                <span>▶</span>
+                ${category}<span>▶</span>
             </div>
             <div class="perm-category-content">
                 ${perms.map(p => `
@@ -1566,23 +1530,16 @@ function openEditAdminModal(admin) {
     });
     
     const el = document.getElementById('editPermCheckboxes');
-    const grouped = ALL_PERMISSIONS.reduce((acc, p) => {
-        acc[p.category] = acc[p.category] || [];
-        acc[p.category].push(p);
-        return acc;
-    }, {});
-
+    const grouped = ALL_PERMISSIONS.reduce((acc, p) => { acc[p.category] = acc[p.category] || []; acc[p.category].push(p); return acc; }, {});
     el.innerHTML = Object.entries(grouped).map(([category, perms]) => `
         <div>
             <div class="perm-category" onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('span').textContent = this.querySelector('span').textContent === '▼' ? '▶' : '▼';">
-                ${category}
-                <span>▶</span>
+                ${category}<span>▶</span>
             </div>
             <div class="perm-category-content">
                 ${perms.map(p => `
                     <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px; margin-top: 0.5rem; cursor:pointer;">
-                        <input type="checkbox" value="${p.key}" class="edit-perm-cb" ${admin.permissions.includes(p.key) ? 'checked' : ''}> 
-                        ${p.label}
+                        <input type="checkbox" value="${p.key}" class="edit-perm-cb" ${admin.permissions.includes(p.key) ? 'checked' : ''}> ${p.label}
                     </label>
                 `).join('')}
             </div>
@@ -1612,11 +1569,9 @@ if (editAdminForm) {
         const adminId = document.getElementById('editAdminId').value;
         const newPassword = document.getElementById('editAdminPassword').value.trim();
         const permissions = [...document.querySelectorAll('.edit-perm-cb:checked')].map(cb => cb.value);
-
+        
         const payload = {};
-        if (hasPermission('staff.edit.permissions')) {
-            payload.permissions = permissions;
-        }
+        if (hasPermission('staff.edit.permissions')) payload.permissions = permissions;
         if (hasPermission('staff.edit.profile')) {
             payload.realName = document.getElementById('editAdminRealName').value;
             payload.employeeId = document.getElementById('editAdminEmployeeId').value;
@@ -1634,15 +1589,9 @@ if (editAdminForm) {
         
         try {
             if (Object.keys(payload).length > 0) {
-                const permRes = await fetch(`${API_URL}/auth/admins/${adminId}`, { 
-                    method: 'PUT', 
-                    headers, 
-                    body: JSON.stringify(payload) 
-                });
+                const permRes = await fetch(`${API_URL}/auth/admins/${adminId}`, { method: 'PUT', headers, body: JSON.stringify(payload) });
                 const permResult = await permRes.json();
-                if (!permResult.success) {
-                    throw new Error(permResult.message);
-                }
+                if (!permResult.success) throw new Error(permResult.message);
             }
 
             if (newPassword && hasPermission('staff.reset.password')) {
@@ -2969,12 +2918,21 @@ document.getElementById('markSelfAttendanceForm')?.addEventListener('submit', as
     const date = document.getElementById('selfAttDate').value;
     const status = document.getElementById('selfAttStatus').value;
     const remarks = document.getElementById('selfAttRemarks').value;
+    const entryTime = document.getElementById('selfAttEntryTime')?.value || '';
+    const exitTime = document.getElementById('selfAttExitTime')?.value || '';
     const msg = document.getElementById('selfAttMsg');
     
+    const selectedDate = new Date(date);
+    if (selectedDate.getDay() === 0) {
+        msg.innerHTML = '<span style="color:#991b1b">❌ Cannot mark attendance for Sundays.</span>';
+        setTimeout(() => msg.innerHTML = '', 4000);
+        return;
+    }
+
     try {
         const res = await fetch(`${STUDENT_ADMIN}/staff-attendance/mark`, {
             method: 'POST', headers,
-            body: JSON.stringify({ date, status, remarks })
+            body: JSON.stringify({ date, status, remarks, entryTime, exitTime })
         });
         const result = await res.json();
         if (result.success) {
@@ -2990,6 +2948,10 @@ document.getElementById('markSelfAttendanceForm')?.addEventListener('submit', as
     setTimeout(() => msg.innerHTML = '', 4000);
 });
 
+window.toggleAllStaff = window.toggleAllStaffRoster = function(checked) {
+    document.querySelectorAll('.staff-roster-cb').forEach(cb => cb.checked = checked);
+};
+
 async function loadStaffAttendanceToday() {
     const dateInput = document.getElementById('staffBulkAttDate');
     const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
@@ -3001,21 +2963,48 @@ async function loadStaffAttendanceToday() {
         const container = document.getElementById('staffBulkAttRows');
         if (!container) return; // skip if HTML missing
         
+        if (data.staffList.length === 0) {
+            container.innerHTML = '<p class="empty-state">No staff members found.</p>';
+            return;
+        }
+
         container.innerHTML = data.staffList.map(s => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.7rem;background:#f9fafb;border-radius:8px;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
-                <span style="flex:1"><strong>${escapeHtml(s.realName || s.username)}</strong> (${escapeHtml(s.employeeId || '-')})</span>
-                <div style="display:flex;gap:0.5rem">
-                    <input id="satt-rem-${s.adminId}" placeholder="Remarks" value="${escapeHtml(s.remarks || '')}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px;width:120px">
-                    <select id="satt-status-${s.adminId}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px">
-                        <option value="Present" ${s.status === 'Present' ? 'selected' : ''}>Present</option>
-                        <option value="Absent" ${s.status === 'Absent' ? 'selected' : ''}>Absent</option>
-                        <option value="Leave" ${s.status === 'Leave' ? 'selected' : ''}>Leave</option>
-                        <option value="Half-Day" ${s.status === 'Half-Day' ? 'selected' : ''}>Half-Day</option>
-                    </select>
+            <div style="display:flex;flex-direction:column;padding:0.7rem;background:#f9fafb;border-radius:8px;margin-bottom:0.5rem;border:1px solid #e5e7eb;">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">
+                    <span style="flex:1; display:flex; align-items:center; gap:0.5rem;">
+                        <input type="checkbox" class="staff-roster-cb" value="${s.adminId}" checked style="width:16px;height:16px;accent-color:#2563eb;">
+                        <span><strong>${escapeHtml(s.realName || s.username)}</strong> (${escapeHtml(s.employeeId || '-')})</span>
+                    </span>
+                    <div style="display:flex;gap:0.5rem">
+                        <select id="satt-status-${s.adminId}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px">
+                            <option value="Present" ${s.status === 'Present' ? 'selected' : ''}>Present</option>
+                            <option value="Absent" ${s.status === 'Absent' ? 'selected' : ''}>Absent</option>
+                            <option value="Leave" ${s.status === 'Leave' ? 'selected' : ''}>Leave</option>
+                            <option value="Half-Day" ${s.status === 'Half-Day' ? 'selected' : ''}>Half-Day</option>
+                            <option value="Holiday" ${s.status === 'Holiday' ? 'selected' : ''}>Holiday</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                    <input type="time" id="satt-entry-${s.adminId}" title="Entry Time" value="${s.entryTime || ''}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px;width:110px">
+                    <input type="time" id="satt-exit-${s.adminId}" title="Exit Time" value="${s.exitTime || ''}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px;width:110px">
+                    <input type="text" id="satt-rem-${s.adminId}" placeholder="Remarks" value="${escapeHtml(s.remarks || '')}" style="flex:1;padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px;min-width:120px">
                 </div>
             </div>
         `).join('');
         window.currentStaffList = data.staffList;
+
+        // Automatically bind the existing "Select All" checkbox in your HTML file
+        const rosterSec = document.getElementById('staff-roster-sec');
+        if (rosterSec) {
+            const existingSelectAll = rosterSec.querySelector('input[type="checkbox"]:not(.staff-roster-cb)');
+            if (existingSelectAll) {
+                existingSelectAll.checked = true;
+                existingSelectAll.onchange = function(e) {
+                    document.querySelectorAll('.staff-roster-cb').forEach(cb => cb.checked = e.target.checked);
+                };
+            }
+        }
     } catch(e) { console.error(e); }
 }
 
@@ -3024,10 +3013,15 @@ window.submitStaffAttendanceBulk = async function() {
     const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
     if (!window.currentStaffList) return;
     
-    const records = window.currentStaffList.map(s => ({
-        adminId: s.adminId,
-        status: document.getElementById(`satt-status-${s.adminId}`).value,
-        remarks: document.getElementById(`satt-rem-${s.adminId}`).value
+    const selectedIds = [...document.querySelectorAll('.staff-roster-cb:checked')].map(cb => cb.value);
+    if (selectedIds.length === 0) return alert('Select at least one staff member');
+
+    const records = selectedIds.map(adminId => ({
+        adminId: adminId,
+        status: document.getElementById(`satt-status-${adminId}`).value,
+        remarks: document.getElementById(`satt-rem-${adminId}`).value,
+        entryTime: document.getElementById(`satt-entry-${adminId}`).value,
+        exitTime: document.getElementById(`satt-exit-${adminId}`).value
     }));
     
     const btn = document.getElementById('saveStaffAttBtn');
@@ -3038,6 +3032,10 @@ window.submitStaffAttendanceBulk = async function() {
         });
         const data = await res.json();
         alert(data.success ? '✅ ' + data.message : '❌ ' + data.message);
+        if (data.success) {
+            loadStaffAttendanceToday();
+            if (typeof loadStaffHistory === 'function') loadStaffHistory();
+        }
     } catch(e) { alert('❌ Error saving staff attendance'); }
     if (btn) btn.textContent = 'Save Attendance';
 };
@@ -3053,39 +3051,7 @@ async function loadMyStaffAttendance() {
         
         teacherAttRecords = data.records;
         renderTeacherCalendar();
-        renderStaffAttendanceSummary();
     } catch(e) { console.error(e); }
-}
-
-function renderStaffAttendanceSummary() {
-    const container = document.getElementById('staffAttendanceSummaryGrid');
-    if (!container) return;
-
-    const summary = {
-        'Present': 0,
-        'Absent': 0,
-        'Leave': 0,
-        'Half-Day': 0,
-        'Holiday': 0,
-        'Pending': 0
-    };
-
-    teacherAttRecords.forEach(record => {
-        if (record.approvalStatus === 'Pending') {
-            summary['Pending']++;
-        } else if (record.approvalStatus === 'Approved' && summary.hasOwnProperty(record.status)) {
-            summary[record.status]++;
-        }
-    });
-
-    container.innerHTML = `
-        <div class="stat-card" style="background:#ecfdf5; border-color:#a7f3d0; text-align:center; padding:1rem;"><h3 style="color:#065f46; margin:0;">${summary['Present']}</h3><p style="margin:0; font-size:0.85rem;">Present</p></div>
-        <div class="stat-card" style="background:#fef2f2; border-color:#fecaca; text-align:center; padding:1rem;"><h3 style="color:#991b1b; margin:0;">${summary['Absent']}</h3><p style="margin:0; font-size:0.85rem;">Absent</p></div>
-        <div class="stat-card" style="background:#fefce8; border-color:#fde68a; text-align:center; padding:1rem;"><h3 style="color:#854d0e; margin:0;">${summary['Leave']}</h3><p style="margin:0; font-size:0.85rem;">Leave</p></div>
-        <div class="stat-card" style="background:#fffbeb; border-color:#fde68a; text-align:center; padding:1rem;"><h3 style="color:#854d0e; margin:0;">${summary['Half-Day']}</h3><p style="margin:0; font-size:0.85rem;">Half-Day</p></div>
-        <div class="stat-card" style="background:#eff6ff; border-color:#bfdbfe; text-align:center; padding:1rem;"><h3 style="color:#1e40af; margin:0;">${summary['Holiday']}</h3><p style="margin:0; font-size:0.85rem;">Holiday</p></div>
-        <div class="stat-card" style="background:#f1f5f9; border-color:#e2e8f0; text-align:center; padding:1rem;"><h3 style="color:#475569; margin:0;">${summary['Pending']}</h3><p style="margin:0; font-size:0.85rem;">Pending</p></div>
-    `;
 }
 
 window.changeTeacherCalendarMonth = function(dir) {
@@ -3129,29 +3095,35 @@ function renderTeacherCalendar() {
         let tooltip = '';
         let indicator = '';
         let borderColor = '#e5e7eb';
+        const dateObj = new Date(year, month, d);
+        const isSunday = dateObj.getDay() === 0;
         
         if (record) {
+            let timeStr = (record.entryTime || record.exitTime) ? `\nEntry: ${record.entryTime || '-'} | Exit: ${record.exitTime || '-'}` : '';
             if (record.approvalStatus === 'Pending') {
-                bgColor = '#e0e7ff'; borderColor = '#6366f1'; indicator = '⏳'; tooltip = 'Pending Approval';
+                bgColor = '#e0e7ff'; borderColor = '#6366f1'; indicator = '⏳'; tooltip = 'Pending Approval' + timeStr;
             } else if (record.approvalStatus === 'Rejected') {
-                bgColor = '#f3f4f6'; borderColor = '#9ca3af'; indicator = '❌'; tooltip = 'Rejected';
+                bgColor = '#f3f4f6'; borderColor = '#9ca3af'; indicator = '❌'; tooltip = 'Rejected' + timeStr;
             } else {
-                if (record.status === 'Present') { bgColor = '#d1fae5'; borderColor = '#10b981'; tooltip = 'Present'; }
-                else if (record.status === 'Absent') { bgColor = '#fee2e2'; borderColor = '#ef4444'; tooltip = 'Absent'; }
-                else { bgColor = '#fef3c7'; borderColor = '#f59e0b'; tooltip = record.status; }
+                if (record.status === 'Present') { bgColor = '#d1fae5'; borderColor = '#10b981'; tooltip = 'Present' + timeStr; }
+                else if (record.status === 'Absent') { bgColor = '#fee2e2'; borderColor = '#ef4444'; tooltip = 'Absent' + timeStr; }
+                else if (record.status === 'Holiday') { bgColor = '#eff6ff'; borderColor = '#6366f1'; tooltip = 'Holiday' + timeStr; }
+                else { bgColor = '#fef3c7'; borderColor = '#f59e0b'; tooltip = record.status + timeStr; }
             }
-        } else if (new Date(year, month, d) > new Date()) {
+        } else if (isSunday) {
+            bgColor = '#f8fafc'; borderColor = '#cbd5e1'; indicator = 'Sun'; tooltip = 'Sunday (Holiday)';
+        } else if (dateObj > new Date()) {
             bgColor = '#f9fafb';
         }
         
-        const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
+        const isToday = new Date().toDateString() === dateObj.toDateString();
         if (isToday) borderColor = '#2563eb';
         const borderW = isToday ? '2px' : '1px';
         
         html += `
             <div title="${tooltip}" style="padding:10px; background:${bgColor}; border: ${borderW} solid ${borderColor}; border-radius:6px; cursor:default; min-height:65px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition: transform 0.2s;">
                 <span style="font-weight:${isToday?'bold':'600'}; color:#334155;">${d}</span>
-                <span style="font-size:0.75rem; margin-top:4px; color:#4b5563; font-weight:600;">${record ? (indicator || record.status.substring(0,3)) : '-'}</span>
+                <span style="font-size:0.75rem; margin-top:4px; color:#4b5563; font-weight:600;">${record ? (indicator || record.status.substring(0,3)) : (isSunday ? indicator : '-')}</span>
             </div>
         `;
     }
@@ -3170,7 +3142,12 @@ async function loadPendingStaffAttendanceRequests() {
                     <td><strong>${escapeHtml(r.teacherName)}</strong></td>
                     <td>${new Date(r.date).toLocaleDateString()}</td>
                     <td><span class="status-select status-${r.status}">${r.status}</span></td>
-                    <td>${escapeHtml(r.remarks || '-')}</td>
+                    <td>
+                        <div style="font-size:0.85rem;color:#4b5563;">
+                            ${r.entryTime || r.exitTime ? `<strong>Time:</strong> ${escapeHtml(r.entryTime || '-')} to ${escapeHtml(r.exitTime || '-')}<br>` : ''}
+                            <strong>Note:</strong> ${escapeHtml(r.remarks || '-')}
+                        </div>
+                    </td>
                     <td>
                         <button class="action-btn" style="background:#10b981;color:white" onclick="updateStaffAttendanceStatus('${r._id}', 'Approved')">Approve</button>
                         <button class="action-btn" style="background:#ef4444;color:white" onclick="updateStaffAttendanceStatus('${r._id}', 'Rejected')">Reject</button>
@@ -3201,10 +3178,12 @@ async function updateStaffAttendanceStatus(id, approvalStatus) {
 }
 
 window.loadStaffHistory = async function() {
-    const adminId = document.getElementById('historyStaffSelect').value;
-    const monthVal = document.getElementById('historyMonthSelect').value;
+    const adminId = document.getElementById('historyStaffSelect')?.value;
+    const monthVal = document.getElementById('historyMonthSelect')?.value;
     const tbody = document.getElementById('staffHistoryTable');
     const summaryGrid = document.getElementById('staffHistorySummaryGrid');
+    
+    if (!tbody || !summaryGrid) return;
     
     if (!adminId || !monthVal) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Select a staff member and month</td></tr>';
@@ -3251,7 +3230,8 @@ window.loadStaffHistory = async function() {
             </tr>
         `).join('');
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Server error</td></tr>';
+        console.error("Staff History Error:", e);
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state">Server error: ${e.message}</td></tr>`;
     }
 };
 
@@ -3265,6 +3245,7 @@ window.loadPayrollAdmin = async function() {
     }
     const month = monthInput.value;
     const tbody = document.getElementById('payrollAdminTable');
+    if (!tbody) return;
     
     try {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Loading...</td></tr>';
@@ -3276,12 +3257,12 @@ window.loadPayrollAdmin = async function() {
         
         tbody.innerHTML = data.data.map(d => `
             <tr>
-                <td><strong>${escapeHtml(d.name)}</strong> <br><small style="color:#6b7280">${d.employeeId}</small></td>
-                <td>₹${d.basicSalary}</td>
+                <td><strong>${escapeHtml(d.name)}</strong> <br><small style="color:#6b7280">${d.employeeId || '-'}</small></td>
+                <td>₹${d.basicSalary || 0}</td>
                 <td><strong>${d.payroll ? '₹' + d.payroll.netSalary : '-'}</strong></td>
                 <td>${d.payroll ? `<span class="badge paid">Generated</span>` : `<span class="badge pending">Pending</span>`}</td>
                 <td>
-                    <button class="action-btn btn-view" onclick="openPayrollModal('${d.staffId}', '${escapeHtml(d.name)}', ${d.basicSalary}, ${d.payroll ? d.payroll.allowances : 0}, ${d.payroll ? d.payroll.arrears : 0}, ${d.payroll ? d.payroll.deductions : 0})">${d.payroll ? '✏️ Edit' : '➕ Generate'}</button>
+                    <button class="action-btn btn-view" onclick="openPayrollModal('${d.staffId}', '${escapeHtml(d.name)}', ${d.basicSalary || 0}, ${d.payroll ? d.payroll.allowances : 0}, ${d.payroll ? d.payroll.arrears : 0}, ${d.payroll ? d.payroll.deductions : 0})">${d.payroll ? '✏️ Edit' : '➕ Generate'}</button>
                     ${d.payroll ? `<button class="action-btn" style="background:#2563eb; color:white;" onclick="downloadSalarySlip('${d.payroll._id}')">📄 PDF</button>` : ''}
                 </td>
             </tr>
@@ -3325,14 +3306,15 @@ document.getElementById('payrollForm')?.addEventListener('submit', async (e) => 
     } catch(err) { alert('Error generating slip'); } finally { btn.textContent = 'Save & Generate'; btn.disabled = false; }
 });
 
-async function loadMySalarySlips() {
+window.loadMySalarySlips = async function() {
     try {
         const res = await fetch(`${API_URL}/student-admin/payroll/my`, { headers });
         const data = await res.json();
         const tbody = document.getElementById('mySalarySlipsTable');
+        if (!tbody) return;
         tbody.innerHTML = data.slips.length ? data.slips.map(s => `<tr><td><strong>${s.month}</strong></td><td>₹${s.netSalary}</td><td><span class="badge paid">${s.status}</span></td><td><button class="sd-mini-btn" style="background:#2563eb; border:none" onclick="downloadSalarySlip('${s._id}')">📄 Download PDF</button></td></tr>`).join('') : `<tr><td colspan="4" class="empty-state">No salary slips generated yet.</td></tr>`;
     } catch (e) { console.error(e); }
-}
+};
 
 window.downloadSalarySlip = async function(id) {
     try { 

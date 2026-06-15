@@ -279,65 +279,6 @@ window.showTimetableDay = function(day, btn) {
     `;
 }
 
-
-async function loadMyFees() {
-    const container = document.getElementById('feeHistory');
-    container.innerHTML = '<p>Loading...</p>';
-    try {
-        const res = await fetch(`${API_URL}/student/my-fees`, {
-            headers: { 'Authorization': `Bearer ${studentToken}` }
-        });
-        const data = await res.json();
-        if (!data.success) { container.innerHTML = '<p>Could not load fees.</p>'; return; }
-
-        if (data.fees.length === 0) {
-            container.innerHTML = '<p style="color:#6b7280">No fee records yet.</p>';
-            return;
-        }
-
-        container.innerHTML = data.fees.map(f => {
-            const isOverdue = f.dueDate && new Date(f.dueDate) < new Date() && f.status !== 'Paid';
-            const history = f.payments.length ? `
-                <div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid #e5e7eb;font-size:0.85rem">
-                    <strong style="color:#4b5563">Payment History:</strong>
-                    ${f.payments.map(p => `
-                        <div style="display:flex;justify-content:space-between;padding:0.3rem 0;color:#374151">
-                            <span>₹${p.amount} · ${escapeHtml(p.mode)} · ${new Date(p.date).toLocaleDateString()}</span>
-                            <span style="color:#6b7280">Receipt #${escapeHtml(p.receiptNo)}</span>
-                        </div>
-                    `).join('')}
-                </div>` : '<p style="color:#9ca3af;font-size:0.85rem;margin-top:0.5rem">No payments recorded yet.</p>';
-
-            const barColor = f.status === 'Paid' ? '#10b981' : (isOverdue ? '#ef4444' : '#fbbf24');
-
-            return `
-            <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:0.8rem;border-left:4px solid ${barColor}">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.4rem">
-                    <div>
-                        <strong>${escapeHtml(f.academicYear)}</strong> · <strong>${escapeHtml(f.category)}</strong>
-                        <span style="color:#6b7280"> — ${escapeHtml(f.feeType)}</span>
-                        ${isOverdue ? '<span style="color:#ef4444;font-weight:600;font-size:0.85rem"> ⚠️ Overdue</span>' : ''}
-                    </div>
-                    <span style="padding:2px 8px;border-radius:12px;font-size:0.78rem;font-weight:600;
-                        background:${f.status==='Paid'?'#d1fae5':'#fef3c7'};color:${f.status==='Paid'?'#065f46':'#92400e'}">
-                        ${f.status}
-                    </span>
-                </div>
-                <div style="font-size:0.85rem;color:#4b5563;margin-top:0.5rem;">
-                    Total Fee: ₹${f.amount} 
-                    ${f.discount > 0 ? ` | <span style="color:#10b981;">Discount: -₹${f.discount} ${f.discountReason ? `(${escapeHtml(f.discountReason)})` : ''}</span> | Net Fee: ₹${f.amount - (f.discount || 0)}` : ''}
-                </div>
-                <div style="font-size:0.85rem;color:#4b5563;margin-top:0.2rem;">
-                    Paid: ₹${f.totalPaid} | <span style="color:${f.pending > 0 ? '#92400e' : '#065f46'}">Pending: ₹${f.pending}</span>
-                </div>
-                ${history}
-            </div>`;
-        }).join('');
-    } catch (e) {
-        container.innerHTML = '<p>Error loading fees.</p>';
-    }
-}
-
 async function loadFees() {
     const panel = document.getElementById('fees-panel');
     try {
