@@ -261,17 +261,42 @@ function showTab(tab, btn) {
     document.getElementById('admins-tab').classList.toggle('hidden', tab !== 'admins');
     document.getElementById('audit-tab')?.classList.toggle('hidden', tab !== 'audit');
     document.getElementById('report-tab')?.classList.toggle('hidden', tab !== 'report');
+    document.getElementById('teacher-workspace-tab')?.classList.toggle('hidden', tab !== 'teacher-workspace');
     
     // in if-chain:
    if (tab === 'report') { loadReport(); loadPendingSummary(); loadDefaulters(); loadDefaulterClasses(); }
         
     
     if (tab === 'audit') loadAudit(1);
-    if (tab === 'students') { loadStudentsAdmin(); loadClasses(); }
+    if (tab === 'students') { 
+        loadStudentsAdmin(); loadClasses(); 
+        const firstVisibleStudentTab = [...document.querySelectorAll('.student-sub-tab-btn')].find(b => b.style.display !== 'none');
+        if (firstVisibleStudentTab) {
+            firstVisibleStudentTab.click();
+        }
+    }
     if (tab === 'documents') loadDocsAdmin();
     if (tab === 'gallery') loadGalleryAdmin();
     if (tab === 'news') loadNewsAdmin();
-    if (tab === 'admins') loadAdmins();
+    if (tab === 'admins') {
+        loadAdmins();
+        if (myRole === 'superadmin' || hasPermission('staff.attendance.approve')) {
+            loadPendingStaffAttendanceRequests(); 
+            loadStaffAttendanceToday();
+        }
+        
+        // Automatically open the first section the user is permitted to see
+        const firstVisibleStaffTab = [...document.querySelectorAll('.staff-sub-tab-btn')].find(b => b.style.display !== 'none');
+        if (firstVisibleStaffTab) {
+            firstVisibleStaffTab.click();
+        }
+    }
+    if (tab === 'teacher-workspace') { 
+        const firstVisibleWorkspaceTab = [...document.querySelectorAll('.workspace-sub-tab-btn')].find(b => b.style.display !== 'none');
+        if (firstVisibleWorkspaceTab) {
+            firstVisibleWorkspaceTab.click();
+        }
+    }
 
     // Hide forms based on granular permissions
     const gForm = document.getElementById('galleryForm');
@@ -288,9 +313,10 @@ function showTab(tab, btn) {
     document.querySelectorAll('[data-perm="applications.export"]').forEach(el => el.style.display = hasPermission('applications.export') ? '' : 'none');
     document.querySelectorAll('[data-perm="students.export"]').forEach(el => el.style.display = hasPermission('students.export') ? '' : 'none');
 
-    const searchBar = document.querySelector('.search-bar');
+    const searchBar = document.getElementById('globalSearchBar');
     if (searchBar) {
-        searchBar.style.display = (tab === 'gallery' || tab === 'news' || tab === 'documents' || tab === 'students'|| tab === 'admins' || tab === 'audit' || tab === 'report') ? 'none' : 'flex';
+        const tabsWithSearch = ['applications', 'messages', 'audit', 'report'];
+        searchBar.style.display = tabsWithSearch.includes(tab) ? 'flex' : 'none';
     }
 
     const searchInput = document.getElementById('searchInput');
@@ -306,6 +332,81 @@ function showTab(tab, btn) {
 
     if (tab !== 'gallery' && tab !== 'news') clearSearch();
 }
+
+window.showStaffSubTab = function(tab, btn) {
+    // Reset buttons
+    document.querySelectorAll('.staff-sub-tab-btn').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = '#475569';
+        b.classList.remove('active');
+    });
+    if (btn) {
+        btn.style.background = '#2563eb';
+        btn.style.color = 'white';
+        btn.classList.add('active');
+    }
+    // Hide all sections
+    ['staff-list-sec', 'staff-create-sec', 'staff-approvals-sec', 'staff-roster-sec', 'staff-history-sec', 'staff-payroll-sec'].forEach(sec => {
+        const el = document.getElementById(sec);
+        if (el) el.classList.add('hidden');
+    });
+    // Show target section
+    const target = document.getElementById(tab + '-sec');
+    if (target) target.classList.remove('hidden');
+};
+
+window.showWorkspaceSubTab = function(tab, btn) {
+    // Reset buttons
+    document.querySelectorAll('.workspace-sub-tab-btn').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = '#475569';
+        b.classList.remove('active');
+    });
+    if (btn) {
+        btn.style.background = '#2563eb';
+        btn.style.color = 'white';
+        btn.classList.add('active');
+    }
+    // Hide all sections
+    ['workspace-attendance-sec', 'workspace-payroll-sec'].forEach(sec => {
+        const el = document.getElementById(sec);
+        if (el) el.classList.add('hidden');
+    });
+    // Show target section
+    const target = document.getElementById(tab + '-sec');
+    if (target) target.classList.remove('hidden');
+
+    if (tab === 'workspace-attendance') {
+        const dInput = document.getElementById('selfAttDate');
+        if (dInput && !dInput.value) dInput.value = new Date().toISOString().split('T')[0];
+        loadMyStaffAttendance(); 
+    }
+    if (tab === 'workspace-payroll') {
+        loadMySalarySlips();
+    }
+};
+
+window.showStudentSubTab = function(tab, btn) {
+    // Reset buttons
+    document.querySelectorAll('.student-sub-tab-btn').forEach(b => {
+        b.style.background = 'transparent';
+        b.style.color = '#475569';
+        b.classList.remove('active');
+    });
+    if (btn) {
+        btn.style.background = '#2563eb';
+        btn.style.color = 'white';
+        btn.classList.add('active');
+    }
+    // Hide all sections
+    ['student-list-sec', 'student-add-sec', 'student-manage-sec'].forEach(sec => {
+        const el = document.getElementById(sec);
+        if (el) el.classList.add('hidden');
+    });
+    // Show target section
+    const target = document.getElementById(tab + '-sec');
+    if (target) target.classList.remove('hidden');
+};
 
 function logout() {
     localStorage.removeItem('adminToken');
@@ -606,41 +707,37 @@ let allStudents = [];
 let listPage = 1;
 const LIST_PER_PAGE = 20;
 
-async function loadStudentsAdmin() {
+async function loadStudentsAdmin(page = 1) {
+    listPage = page;
     try {
-        const res = await fetch(`${STUDENT_ADMIN}/students`, { headers });
+        const classFilter = document.getElementById('listClassFilter')?.value || '';
+        const search = document.getElementById('listSearch')?.value || '';
+        
+        const list = document.getElementById('adminStudentList');
+        if (list) list.innerHTML = '<p>Loading...</p>';
+
+        const params = new URLSearchParams({ page: listPage, limit: LIST_PER_PAGE });
+        if (classFilter) params.append('class', classFilter);
+        if (search) params.append('search', search);
+
+        const res = await fetch(`${STUDENT_ADMIN}/students?${params}`, { headers });
         const data = await res.json();
         if (!data.success) return;
-        allStudents = data.students;
-        const classes = [...new Set(allStudents.map(s => s.class))].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
-        const filterSel = document.getElementById('listClassFilter');
-        if (filterSel) {
-            filterSel.innerHTML = '<option value="">All Classes</option>' + classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
-        }
-        listPage = 1;
-        renderStudentList();
+        
+        allStudents = data.students; // only current page
+        renderStudentListFromServer(data);
     } catch (e) { console.error(e); }
 }
 
-function renderStudentList() {
-    const search = (document.getElementById('listSearch')?.value || '').toLowerCase();
-    const classFilter = document.getElementById('listClassFilter')?.value || '';
-    let filtered = allStudents;
-    if (classFilter) filtered = filtered.filter(s => s.class === classFilter);
-    if (search) filtered = filtered.filter(s => s.name.toLowerCase().includes(search) || s.rollNumber.toLowerCase().includes(search));
-
+function renderStudentListFromServer(data) {
     const list = document.getElementById('adminStudentList');
-    if (filtered.length === 0) {
+    if (!data.students || data.students.length === 0) {
         list.innerHTML = '<p style="color:#6b7280">No students found.</p>';
         document.getElementById('listPagination').innerHTML = '';
         return;
     }
-    const totalPages = Math.ceil(filtered.length / LIST_PER_PAGE);
-    if (listPage > totalPages) listPage = 1;
-    const start = (listPage - 1) * LIST_PER_PAGE;
-    const pageItems = filtered.slice(start, start + LIST_PER_PAGE);
 
-    list.innerHTML = pageItems.map(s => `
+    list.innerHTML = data.students.map(s => `
         <div style="background:white;padding:1rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
             <div style="font-size:2rem">🎓</div>
             <div style="flex:1;min-width:200px;">
@@ -656,13 +753,11 @@ function renderStudentList() {
     `).join('');
 
     document.getElementById('listPagination').innerHTML = `
-        <button class="sd-mini-btn" ${listPage===1?'disabled':''} onclick="changePage(-1)">‹ Prev</button>
-        <span style="padding:0.6rem">Page ${listPage} of ${totalPages} (${filtered.length} students)</span>
-        <button class="sd-mini-btn" ${listPage===totalPages?'disabled':''} onclick="changePage(1)">Next ›</button>
+        <button class="sd-mini-btn" ${data.page===1?'disabled':''} onclick="loadStudentsAdmin(${data.page-1})">‹ Prev</button>
+        <span style="padding:0.6rem">Page ${data.page} of ${data.pages} (${data.total} students)</span>
+        <button class="sd-mini-btn" ${data.page===data.pages?'disabled':''} onclick="loadStudentsAdmin(${data.page+1})">Next ›</button>
     `;
 }
-
-function changePage(dir) { listPage += dir; renderStudentList(); }
 
 const studentForm = document.getElementById('studentForm');
 if (studentForm) {
@@ -703,6 +798,12 @@ async function loadClasses() {
         if (!data.success) return;
         const sel = document.getElementById('manageClass');
         if (sel) sel.innerHTML = '<option value="">Select Class...</option>' + data.classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
+        
+        const filterSel = document.getElementById('listClassFilter');
+        if (filterSel) {
+            const currentVal = filterSel.value;
+            filterSel.innerHTML = '<option value="">All Classes</option>' + data.classes.map(c => `<option value="${c}" ${c === currentVal ? 'selected' : ''}>Class ${c}</option>`).join('');
+        }
     } catch (e) { console.error(e); }
 }
 
@@ -1204,32 +1305,40 @@ async function saveTimetable() {
 
 // ============ PERMISSIONS ============
 const ALL_PERMISSIONS = [
-    { key: 'applications.view', label: '📝 View Applications' },
-    { key: 'applications.edit', label: '📝 Edit App Status' },
-    { key: 'applications.delete', label: '📝 Delete Applications' },
-    { key: 'applications.export', label: '📝 Export Applications' },
-    { key: 'messages.view', label: '💬 View Messages' },
-    { key: 'messages.delete', label: '💬 Delete Messages' },
-    { key: 'gallery.add', label: '📸 Add Gallery Photos' },
-    { key: 'gallery.edit', label: '📸 Edit Gallery Photos' },
-    { key: 'gallery.delete', label: '📸 Delete Gallery Photos' },
-    { key: 'news.add', label: '📰 Add News' },
-    { key: 'news.edit', label: '📰 Edit News' },
-    { key: 'news.delete', label: '📰 Delete News' },
-    { key: 'documents.add', label: '📄 Upload Public Docs' },
-    { key: 'documents.delete', label: '📄 Delete Public Docs' },
-    { key: 'students.view', label: '🎓 View Students' },
-    { key: 'students.add', label: '🎓 Add Students' },
-    { key: 'students.edit', label: '🎓 Edit/Promote Students' },
-    { key: 'students.delete', label: '🎓 Delete Students' },
-    { key: 'students.export', label: '🎓 Export Students' },
-    { key: 'results.manage', label: '📊 Manage Results' },
-    { key: 'fees.manage', label: '💰 Manage Fees' },
-    { key: 'attendance.manage', label: '📅 Manage Attendance' },
-    { key: 'timetable.manage', label: '🗓️ Manage Timetable' },
-    { key: 'studentdocs.manage', label: '📄 Manage Student Docs' },
-    { key: 'reports.view', label: '📈 View Finance Reports' },
-    { key: 'audit.view', label: '🔍 View Audit Logs' }
+    { key: 'applications.view', label: 'View Applications', category: 'Applications' },
+    { key: 'applications.edit', label: 'Edit App Status', category: 'Applications' },
+    { key: 'applications.delete', label: 'Delete Applications', category: 'Applications' },
+    { key: 'applications.export', label: 'Export Applications', category: 'Applications' },
+    { key: 'messages.view', label: 'View Messages', category: 'Messages' },
+    { key: 'messages.delete', label: 'Delete Messages', category: 'Messages' },
+    { key: 'gallery.add', label: 'Add Photos', category: 'Gallery' },
+    { key: 'gallery.edit', label: 'Edit Photos', category: 'Gallery' },
+    { key: 'gallery.delete', label: 'Delete Photos', category: 'Gallery' },
+    { key: 'news.add', label: 'Add News', category: 'News & Events' },
+    { key: 'news.edit', label: 'Edit News', category: 'News & Events' },
+    { key: 'news.delete', label: 'Delete News', category: 'News & Events' },
+    { key: 'documents.add', label: 'Upload Public Docs', category: 'Public Documents' },
+    { key: 'documents.delete', label: 'Delete Public Docs', category: 'Public Documents' },
+    { key: 'students.view', label: 'View Students', category: 'Student Management' },
+    { key: 'students.add', label: 'Add Students', category: 'Student Management' },
+    { key: 'students.edit', label: 'Edit/Promote Students', category: 'Student Management' },
+    { key: 'students.delete', label: 'Delete Students', category: 'Student Management' },
+    { key: 'students.export', label: 'Export Students', category: 'Student Management' },
+    { key: 'results.manage', label: 'Manage Results', category: 'Student Management' },
+    { key: 'fees.manage', label: 'Manage Fees', category: 'Student Management' },
+    { key: 'attendance.manage', label: 'Manage Attendance', category: 'Student Management' },
+    { key: 'timetable.manage', label: 'Manage Timetable', category: 'Student Management' },
+    { key: 'studentdocs.manage', label: 'Manage Student Docs', category: 'Student Management' },
+    { key: 'reports.view', label: 'View Finance Reports', category: 'Reports & Logs' },
+    { key: 'audit.view', label: 'View Audit Logs', category: 'Reports & Logs' },
+    { key: 'staff.view', label: 'View Staff Directory', category: 'Staff Management' },
+    { key: 'staff.create', label: 'Create Staff', category: 'Staff Management' },
+    { key: 'staff.edit.profile', label: 'Edit Staff Profile', category: 'Staff Management' },
+    { key: 'staff.edit.permissions', label: 'Edit Staff Permissions', category: 'Staff Management' },
+    { key: 'staff.reset.password', label: 'Reset Staff Password', category: 'Staff Management' },
+    { key: 'staff.delete', label: 'Delete Staff', category: 'Staff Management' },
+    { key: 'staff.payroll.manage', label: 'Manage Staff Payroll', category: 'Staff Management' },
+    { key: 'staff.attendance.approve', label: 'Approve Staff Attendance', category: 'Staff Management' }
 ];
 
 const myRole = adminInfo.role || 'admin';
@@ -1247,12 +1356,13 @@ function applyTabPermissions() {
         'gallery': ['gallery.add', 'gallery.edit', 'gallery.delete'],
         'news': ['news.add', 'news.edit', 'news.delete'],
         'documents': ['documents.add', 'documents.delete'],
-        'students': ['students.view', 'students.add', 'students.edit', 'students.delete', 'students.export', 'results.manage', 'fees.manage', 'attendance.manage', 'timetable.manage', 'studentdocs.manage']
+        'students': ['students.view', 'students.add', 'students.edit', 'students.delete', 'students.export', 'results.manage', 'fees.manage', 'attendance.manage', 'timetable.manage', 'studentdocs.manage'],
+        'admins': ['staff.view', 'staff.create', 'staff.edit.profile', 'staff.edit.permissions', 'staff.reset.password', 'staff.delete', 'staff.attendance.approve', 'staff.payroll.manage']
     };
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
         const onclick = btn.getAttribute('onclick') || '';
-        const match = onclick.match(/showTab\('(\w+)'/);
+        const match = onclick.match(/showTab\('([\w-]+)'/);
         if (!match) return;
         const tab = match[1];
         
@@ -1265,8 +1375,8 @@ function applyTabPermissions() {
             btn.style.display = hasPermission('reports.view') ? '' : 'none';
             return;
         }
-        if (tab === 'admins') {
-            btn.style.display = myRole === 'superadmin' ? '' : 'none';
+        if (tab === 'teacher-workspace') {
+            btn.style.display = (myRole !== 'superadmin') ? '' : 'none'; // ALL teachers see their workspace
             return;
         }
         const req = tabMap[tab];
@@ -1332,13 +1442,21 @@ async function loadAdmins() {
             <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:0.8rem;">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <div>
-                        <h4 style="margin:0; font-size:1.1rem;">${escapeHtml(a.username)} ${a.role==='superadmin' ? '<span style="color:#fbbf24; font-size:0.8rem; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-left:5px;">★ Superadmin</span>' : ''}</h4>
-                        <small style="color:#6b7280">${escapeHtml(a.email)}</small>
+                        <h4 style="margin:0; font-size:1.1rem;">${escapeHtml(a.realName || a.username)} <small style="color:#6b7280; font-size:0.85rem;">(${escapeHtml(a.employeeId || 'No ID')})</small> ${a.role==='superadmin' ? '<span style="color:#fbbf24; font-size:0.8rem; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-left:5px;">★ Superadmin</span>' : ''}</h4>
+                        <div style="font-size:0.85rem; color:#4b5563; margin-top:0.3rem;">
+                            <div><strong>Username:</strong> ${escapeHtml(a.username)} | <strong>Email:</strong> ${escapeHtml(a.email)}</div>
+                            <div><strong>Phone:</strong> ${escapeHtml(a.phone || '-')} | <strong>Joined:</strong> ${a.joiningDate ? new Date(a.joiningDate).toLocaleDateString() : '-'}</div>
+                            <div><strong>Qual:</strong> ${escapeHtml(a.qualifications || '-')} | <strong>Salary:</strong> ₹${a.basicSalary || 0}</div>
+                        </div>
                     </div>
                     ${a.role !== 'superadmin' ? `
                         <div>
-                            <button class="action-btn btn-view" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit</button>
-                            <button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>
+                            ${(hasPermission('staff.edit.profile') || hasPermission('staff.edit.permissions') || hasPermission('staff.reset.password')) ?
+                                `<button class="action-btn btn-view" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit</button>` : ''
+                            }
+                            ${hasPermission('staff.delete') ?
+                                `<button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>` : ''
+                            }
                         </div>
                     ` : ''}
                 </div>
@@ -1355,16 +1473,44 @@ async function loadAdmins() {
                 ` : ''}
             </div>
         `).join('');
+
+        const historyStaffSelect = document.getElementById('historyStaffSelect');
+        if (historyStaffSelect) {
+            historyStaffSelect.innerHTML = '<option value="">Select Staff Member...</option>' + 
+                data.admins.filter(a => a.role !== 'superadmin').map(a => `<option value="${a._id}">${escapeHtml(a.realName || a.username)} (${escapeHtml(a.employeeId || 'No ID')})</option>`).join('');
+        }
+        const monthInput = document.getElementById('historyMonthSelect');
+        if (monthInput && !monthInput.value) {
+            const now = new Date();
+            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
     } catch (e) { console.error(e); }
 }
 
 function renderPermCheckboxes() {
     const el = document.getElementById('permCheckboxes');
     if (!el) return;
-    el.innerHTML = ALL_PERMISSIONS.map(p => `
-        <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px">
-            <input type="checkbox" value="${p.key}" class="perm-cb"> ${p.label}
-        </label>
+
+    const grouped = ALL_PERMISSIONS.reduce((acc, p) => {
+        acc[p.category] = acc[p.category] || [];
+        acc[p.category].push(p);
+        return acc;
+    }, {});
+
+    el.innerHTML = Object.entries(grouped).map(([category, perms]) => `
+        <div>
+            <div class="perm-category" onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('span').textContent = this.querySelector('span').textContent === '▼' ? '▶' : '▼';">
+                ${category}
+                <span>▶</span>
+            </div>
+            <div class="perm-category-content">
+                ${perms.map(p => `
+                    <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px; margin-top: 0.5rem;">
+                        <input type="checkbox" value="${p.key}" class="perm-cb"> ${p.label}
+                    </label>
+                `).join('')}
+            </div>
+        </div>
     `).join('');
 }
 
@@ -1407,14 +1553,49 @@ function openEditAdminModal(admin) {
     document.getElementById('editAdminUsername').textContent = admin.username;
     document.getElementById('editAdminPassword').value = ''; 
     document.getElementById('editAdminMsg').innerHTML = '';
+
+    const profileFields = ['editAdminRealName', 'editAdminEmployeeId', 'editAdminPhone', 'editAdminQualifications', 'editAdminJoiningDate', 'editAdminBasicSalary'];
+    const canEditProfile = hasPermission('staff.edit.profile');
+    profileFields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const key = id.replace('editAdmin', '').charAt(0).toLowerCase() + id.replace('editAdmin', '').slice(1);
+            el.value = admin[key] ? (el.type === 'date' ? admin[key].split('T')[0] : admin[key]) : '';
+            el.disabled = !canEditProfile;
+        }
+    });
     
     const el = document.getElementById('editPermCheckboxes');
-    el.innerHTML = ALL_PERMISSIONS.map(p => `
-        <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px;cursor:pointer;">
-            <input type="checkbox" value="${p.key}" class="edit-perm-cb" ${admin.permissions.includes(p.key) ? 'checked' : ''}> 
-            ${p.label}
-        </label>
+    const grouped = ALL_PERMISSIONS.reduce((acc, p) => {
+        acc[p.category] = acc[p.category] || [];
+        acc[p.category].push(p);
+        return acc;
+    }, {});
+
+    el.innerHTML = Object.entries(grouped).map(([category, perms]) => `
+        <div>
+            <div class="perm-category" onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('span').textContent = this.querySelector('span').textContent === '▼' ? '▶' : '▼';">
+                ${category}
+                <span>▶</span>
+            </div>
+            <div class="perm-category-content">
+                ${perms.map(p => `
+                    <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px; margin-top: 0.5rem; cursor:pointer;">
+                        <input type="checkbox" value="${p.key}" class="edit-perm-cb" ${admin.permissions.includes(p.key) ? 'checked' : ''}> 
+                        ${p.label}
+                    </label>
+                `).join('')}
+            </div>
+        </div>
     `).join('');
+    
+    const canEditPerms = hasPermission('staff.edit.permissions');
+    el.querySelectorAll('input').forEach(cb => cb.disabled = !canEditPerms);
+
+    const pwdInput = document.getElementById('editAdminPassword');
+    if (pwdInput) pwdInput.disabled = !hasPermission('staff.reset.password');
+
+    document.getElementById('editAdminForm').querySelector('button[type="submit"]').style.display = (canEditProfile || canEditPerms || hasPermission('staff.reset.password')) ? '' : 'none';
 
     document.getElementById('editAdminModal').classList.add('active');
 }
@@ -1431,6 +1612,20 @@ if (editAdminForm) {
         const adminId = document.getElementById('editAdminId').value;
         const newPassword = document.getElementById('editAdminPassword').value.trim();
         const permissions = [...document.querySelectorAll('.edit-perm-cb:checked')].map(cb => cb.value);
+
+        const payload = {};
+        if (hasPermission('staff.edit.permissions')) {
+            payload.permissions = permissions;
+        }
+        if (hasPermission('staff.edit.profile')) {
+            payload.realName = document.getElementById('editAdminRealName').value;
+            payload.employeeId = document.getElementById('editAdminEmployeeId').value;
+            payload.phone = document.getElementById('editAdminPhone').value;
+            payload.qualifications = document.getElementById('editAdminQualifications').value;
+            payload.joiningDate = document.getElementById('editAdminJoiningDate').value;
+            payload.basicSalary = document.getElementById('editAdminBasicSalary').value;
+        }
+
         const msg = document.getElementById('editAdminMsg');
         
         const btn = editAdminForm.querySelector('button[type="submit"]');
@@ -1438,18 +1633,19 @@ if (editAdminForm) {
         btn.textContent = 'Saving...';
         
         try {
-            const permRes = await fetch(`${API_URL}/auth/admins/${adminId}`, { 
-                method: 'PUT', 
-                headers, 
-                body: JSON.stringify({ permissions }) 
-            });
-            const permResult = await permRes.json();
-            
-            if (!permResult.success) {
-                throw new Error(permResult.message);
+            if (Object.keys(payload).length > 0) {
+                const permRes = await fetch(`${API_URL}/auth/admins/${adminId}`, { 
+                    method: 'PUT', 
+                    headers, 
+                    body: JSON.stringify(payload) 
+                });
+                const permResult = await permRes.json();
+                if (!permResult.success) {
+                    throw new Error(permResult.message);
+                }
             }
 
-            if (newPassword) {
+            if (newPassword && hasPermission('staff.reset.password')) {
                 const pwdRes = await fetch(`${API_URL}/auth/admins/${adminId}/reset-password`, {
                     method: 'PUT',
                     headers,
@@ -1482,11 +1678,9 @@ document.getElementById('editAdminModal')?.addEventListener('click', (e) => {
 });
 
 
-// ============ CHANGE PASSWORD (superadmin) ============
-if (myRole === 'superadmin') {
-    const cpBtn = document.getElementById('changePwdBtn');
-    if (cpBtn) cpBtn.style.display = '';
-}
+// ============ CHANGE PASSWORD (all users can change their own) ============
+const cpBtn = document.getElementById('changePwdBtn');
+if (cpBtn) cpBtn.style.display = '';
 
 function openChangePassword() {
     document.getElementById('pwdModal').classList.add('active');
@@ -1666,35 +1860,50 @@ document.getElementById('resetStudentPwdForm')?.addEventListener('submit', async
 
 
 // 4. Export Students to CSV
-window.exportStudents = function() {
+window.exportStudents = async function() {
     if (!hasPermission('students.export')) return alert('Permission denied');
-    if (!allStudents || allStudents.length === 0) {
-        return alert('No students to export.');
+    
+    try {
+        const btn = document.querySelector('[onclick="exportStudents()"]');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '⏳ Preparing CSV...';
+        btn.disabled = true;
+
+        const res = await fetch(`${STUDENT_ADMIN}/students-export`, { headers });
+        const data = await res.json();
+        
+        if (!data.success || data.students.length === 0) {
+            alert('No students to export.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            return;
+        }
+        
+        const cols = ['Name', 'Roll Number', 'Class', 'Section', 'Parent Name', 'Phone'];
+        const rows = data.students.map(s => [
+            s.name || '', s.rollNumber || '', s.class || '', 
+            s.section || '', s.parentName || '', s.phone || ''
+        ]);
+        
+        let csv = cols.join(',') + '\n';
+        rows.forEach(row => { 
+            csv += row.map(f => `"${String(f).replace(/"/g, '""')}"`).join(',') + '\n'; 
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AJS_Students_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    } catch (e) {
+        console.error(e);
+        alert('Export failed');
     }
-    
-    const cols = ['Name', 'Roll Number', 'Class', 'Section', 'Parent Name', 'Phone'];
-    
-    const rows = allStudents.map(s => [
-        s.name || '', 
-        s.rollNumber || '', 
-        s.class || '', 
-        s.section || '', 
-        s.parentName || '', 
-        s.phone || ''
-    ]);
-    
-    let csv = cols.join(',') + '\n';
-    rows.forEach(row => { 
-        csv += row.map(f => `"${String(f).replace(/"/g, '""')}"`).join(',') + '\n'; 
-    });
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `AJS_Students_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
 };
 
 
@@ -2752,6 +2961,391 @@ function showBulkDocForm() {
         } catch (err) { msg.innerHTML = '<span style="color:#991b1b">❌ Server error</span>'; } finally { btn.disabled = false; }
     });
 }
+
+// ============ STAFF ATTENDANCE ============
+
+document.getElementById('markSelfAttendanceForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const date = document.getElementById('selfAttDate').value;
+    const status = document.getElementById('selfAttStatus').value;
+    const remarks = document.getElementById('selfAttRemarks').value;
+    const msg = document.getElementById('selfAttMsg');
+    
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/staff-attendance/mark`, {
+            method: 'POST', headers,
+            body: JSON.stringify({ date, status, remarks })
+        });
+        const result = await res.json();
+        if (result.success) {
+            msg.innerHTML = '<span style="color:#065f46">✅ Attendance submitted for approval!</span>';
+            document.getElementById('selfAttRemarks').value = '';
+            loadMyStaffAttendance();
+        } else {
+            msg.innerHTML = `<span style="color:#991b1b">❌ ${result.message}</span>`;
+        }
+    } catch (err) {
+        msg.innerHTML = '<span style="color:#991b1b">❌ Server error</span>';
+    }
+    setTimeout(() => msg.innerHTML = '', 4000);
+});
+
+async function loadStaffAttendanceToday() {
+    const dateInput = document.getElementById('staffBulkAttDate');
+    const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+    try {
+        const res = await fetch(`${API_URL}/student-admin/staff-attendance/today?date=${date}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        
+        const container = document.getElementById('staffBulkAttRows');
+        if (!container) return; // skip if HTML missing
+        
+        container.innerHTML = data.staffList.map(s => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.5rem 0.7rem;background:#f9fafb;border-radius:8px;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem;">
+                <span style="flex:1"><strong>${escapeHtml(s.realName || s.username)}</strong> (${escapeHtml(s.employeeId || '-')})</span>
+                <div style="display:flex;gap:0.5rem">
+                    <input id="satt-rem-${s.adminId}" placeholder="Remarks" value="${escapeHtml(s.remarks || '')}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px;width:120px">
+                    <select id="satt-status-${s.adminId}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px">
+                        <option value="Present" ${s.status === 'Present' ? 'selected' : ''}>Present</option>
+                        <option value="Absent" ${s.status === 'Absent' ? 'selected' : ''}>Absent</option>
+                        <option value="Leave" ${s.status === 'Leave' ? 'selected' : ''}>Leave</option>
+                        <option value="Half-Day" ${s.status === 'Half-Day' ? 'selected' : ''}>Half-Day</option>
+                    </select>
+                </div>
+            </div>
+        `).join('');
+        window.currentStaffList = data.staffList;
+    } catch(e) { console.error(e); }
+}
+
+window.submitStaffAttendanceBulk = async function() {
+    const dateInput = document.getElementById('staffBulkAttDate');
+    const date = dateInput ? dateInput.value : new Date().toISOString().split('T')[0];
+    if (!window.currentStaffList) return;
+    
+    const records = window.currentStaffList.map(s => ({
+        adminId: s.adminId,
+        status: document.getElementById(`satt-status-${s.adminId}`).value,
+        remarks: document.getElementById(`satt-rem-${s.adminId}`).value
+    }));
+    
+    const btn = document.getElementById('saveStaffAttBtn');
+    if (btn) btn.textContent = 'Saving...';
+    try {
+        const res = await fetch(`${API_URL}/student-admin/staff-attendance/bulk`, {
+            method: 'POST', headers, body: JSON.stringify({ date, records })
+        });
+        const data = await res.json();
+        alert(data.success ? '✅ ' + data.message : '❌ ' + data.message);
+    } catch(e) { alert('❌ Error saving staff attendance'); }
+    if (btn) btn.textContent = 'Save Attendance';
+};
+
+let teacherAttRecords = [];
+let currentCalDate = new Date();
+
+async function loadMyStaffAttendance() {
+    try {
+        const res = await fetch(`${API_URL}/student-admin/staff-attendance/my`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        
+        teacherAttRecords = data.records;
+        renderTeacherCalendar();
+        renderStaffAttendanceSummary();
+    } catch(e) { console.error(e); }
+}
+
+function renderStaffAttendanceSummary() {
+    const container = document.getElementById('staffAttendanceSummaryGrid');
+    if (!container) return;
+
+    const summary = {
+        'Present': 0,
+        'Absent': 0,
+        'Leave': 0,
+        'Half-Day': 0,
+        'Holiday': 0,
+        'Pending': 0
+    };
+
+    teacherAttRecords.forEach(record => {
+        if (record.approvalStatus === 'Pending') {
+            summary['Pending']++;
+        } else if (record.approvalStatus === 'Approved' && summary.hasOwnProperty(record.status)) {
+            summary[record.status]++;
+        }
+    });
+
+    container.innerHTML = `
+        <div class="stat-card" style="background:#ecfdf5; border-color:#a7f3d0; text-align:center; padding:1rem;"><h3 style="color:#065f46; margin:0;">${summary['Present']}</h3><p style="margin:0; font-size:0.85rem;">Present</p></div>
+        <div class="stat-card" style="background:#fef2f2; border-color:#fecaca; text-align:center; padding:1rem;"><h3 style="color:#991b1b; margin:0;">${summary['Absent']}</h3><p style="margin:0; font-size:0.85rem;">Absent</p></div>
+        <div class="stat-card" style="background:#fefce8; border-color:#fde68a; text-align:center; padding:1rem;"><h3 style="color:#854d0e; margin:0;">${summary['Leave']}</h3><p style="margin:0; font-size:0.85rem;">Leave</p></div>
+        <div class="stat-card" style="background:#fffbeb; border-color:#fde68a; text-align:center; padding:1rem;"><h3 style="color:#854d0e; margin:0;">${summary['Half-Day']}</h3><p style="margin:0; font-size:0.85rem;">Half-Day</p></div>
+        <div class="stat-card" style="background:#eff6ff; border-color:#bfdbfe; text-align:center; padding:1rem;"><h3 style="color:#1e40af; margin:0;">${summary['Holiday']}</h3><p style="margin:0; font-size:0.85rem;">Holiday</p></div>
+        <div class="stat-card" style="background:#f1f5f9; border-color:#e2e8f0; text-align:center; padding:1rem;"><h3 style="color:#475569; margin:0;">${summary['Pending']}</h3><p style="margin:0; font-size:0.85rem;">Pending</p></div>
+    `;
+}
+
+window.changeTeacherCalendarMonth = function(dir) {
+    currentCalDate.setMonth(currentCalDate.getMonth() + dir);
+    renderTeacherCalendar();
+};
+
+function renderTeacherCalendar() {
+    const year = currentCalDate.getFullYear();
+    const month = currentCalDate.getMonth();
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    
+    const monthLabel = document.getElementById('teacherCalendarMonth');
+    if (monthLabel) monthLabel.innerText = `${monthNames[month]} ${year}`;
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const grid = document.getElementById('teacherCalendarGrid');
+    if (!grid) return;
+
+    let html = `
+        <div style="font-weight:bold; padding:8px; background:#f8fafc; font-size:0.85rem; border-radius:4px;">Sun</div>
+        <div style="font-weight:bold; padding:8px; background:#f8fafc; font-size:0.85rem; border-radius:4px;">Mon</div>
+        <div style="font-weight:bold; padding:8px; background:#f8fafc; font-size:0.85rem; border-radius:4px;">Tue</div>
+        <div style="font-weight:bold; padding:8px; background:#f8fafc; font-size:0.85rem; border-radius:4px;">Wed</div>
+        <div style="font-weight:bold; padding:8px; background:#f8fafc; font-size:0.85rem; border-radius:4px;">Thu</div>
+        <div style="font-weight:bold; padding:8px; background:#f8fafc; font-size:0.85rem; border-radius:4px;">Fri</div>
+        <div style="font-weight:bold; padding:8px; background:#f8fafc; font-size:0.85rem; border-radius:4px;">Sat</div>
+    `;
+    
+    for (let i = 0; i < firstDay; i++) {
+        html += `<div style="padding:10px; background:#f8fafc; border-radius:6px; opacity:0.3;"></div>`;
+    }
+    
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month+1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        
+        const record = teacherAttRecords.find(r => r.date.startsWith(dateStr));
+        let bgColor = '#ffffff';
+        let tooltip = '';
+        let indicator = '';
+        let borderColor = '#e5e7eb';
+        
+        if (record) {
+            if (record.approvalStatus === 'Pending') {
+                bgColor = '#e0e7ff'; borderColor = '#6366f1'; indicator = '⏳'; tooltip = 'Pending Approval';
+            } else if (record.approvalStatus === 'Rejected') {
+                bgColor = '#f3f4f6'; borderColor = '#9ca3af'; indicator = '❌'; tooltip = 'Rejected';
+            } else {
+                if (record.status === 'Present') { bgColor = '#d1fae5'; borderColor = '#10b981'; tooltip = 'Present'; }
+                else if (record.status === 'Absent') { bgColor = '#fee2e2'; borderColor = '#ef4444'; tooltip = 'Absent'; }
+                else { bgColor = '#fef3c7'; borderColor = '#f59e0b'; tooltip = record.status; }
+            }
+        } else if (new Date(year, month, d) > new Date()) {
+            bgColor = '#f9fafb';
+        }
+        
+        const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
+        if (isToday) borderColor = '#2563eb';
+        const borderW = isToday ? '2px' : '1px';
+        
+        html += `
+            <div title="${tooltip}" style="padding:10px; background:${bgColor}; border: ${borderW} solid ${borderColor}; border-radius:6px; cursor:default; min-height:65px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition: transform 0.2s;">
+                <span style="font-weight:${isToday?'bold':'600'}; color:#334155;">${d}</span>
+                <span style="font-size:0.75rem; margin-top:4px; color:#4b5563; font-weight:600;">${record ? (indicator || record.status.substring(0,3)) : '-'}</span>
+            </div>
+        `;
+    }
+    grid.innerHTML = html;
+}
+
+async function loadPendingStaffAttendanceRequests() {
+    if (!hasPermission('staff.attendance.approve')) return;
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/staff-attendance/pending`, { headers });
+        const data = await res.json();
+        if (data.success) {
+            const tbody = document.getElementById('pendingStaffAttendanceTable');
+            tbody.innerHTML = data.pending.length ? data.pending.map(r => `
+                <tr>
+                    <td><strong>${escapeHtml(r.teacherName)}</strong></td>
+                    <td>${new Date(r.date).toLocaleDateString()}</td>
+                    <td><span class="status-select status-${r.status}">${r.status}</span></td>
+                    <td>${escapeHtml(r.remarks || '-')}</td>
+                    <td>
+                        <button class="action-btn" style="background:#10b981;color:white" onclick="updateStaffAttendanceStatus('${r._id}', 'Approved')">Approve</button>
+                        <button class="action-btn" style="background:#ef4444;color:white" onclick="updateStaffAttendanceStatus('${r._id}', 'Rejected')">Reject</button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="5" class="empty-state">No pending attendance requests</td></tr>';
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function updateStaffAttendanceStatus(id, approvalStatus) {
+    if (!confirm(`Are you sure you want to ${approvalStatus.toLowerCase()} this attendance?`)) return;
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/staff-attendance/approve/${id}`, {
+            method: 'PUT', headers,
+            body: JSON.stringify({ approvalStatus })
+        });
+        const result = await res.json();
+        if (result.success) {
+            loadPendingStaffAttendanceRequests();
+            loadMyStaffAttendance(); 
+        } else {
+            alert('Error: ' + result.message);
+        }
+    } catch (e) {
+        alert('Server error while updating request');
+    }
+}
+
+window.loadStaffHistory = async function() {
+    const adminId = document.getElementById('historyStaffSelect').value;
+    const monthVal = document.getElementById('historyMonthSelect').value;
+    const tbody = document.getElementById('staffHistoryTable');
+    const summaryGrid = document.getElementById('staffHistorySummaryGrid');
+    
+    if (!adminId || !monthVal) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Select a staff member and month</td></tr>';
+        summaryGrid.innerHTML = '';
+        return;
+    }
+    
+    const [year, month] = monthVal.split('-');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">Loading...</td></tr>';
+    
+    try {
+        const res = await fetch(`${API_URL}/student-admin/staff-attendance/history/${adminId}?year=${year}&month=${month}`, { headers });
+        const data = await res.json();
+        
+        if (!data.success) {
+            tbody.innerHTML = `<tr><td colspan="4" class="empty-state">Error: ${data.message}</td></tr>`;
+            return;
+        }
+        
+        const summary = { 'Present': 0, 'Absent': 0, 'Leave': 0, 'Half-Day': 0, 'Holiday': 0 };
+        data.records.forEach(r => {
+            if (r.approvalStatus === 'Approved' && summary.hasOwnProperty(r.status)) summary[r.status]++;
+        });
+        
+        summaryGrid.innerHTML = `
+            <div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:0.5rem; text-align:center; border-radius:8px;"><div style="font-size:1.2rem;font-weight:bold;color:#065f46">${summary['Present']}</div><small>Present</small></div>
+            <div style="background:#fef2f2; border:1px solid #fecaca; padding:0.5rem; text-align:center; border-radius:8px;"><div style="font-size:1.2rem;font-weight:bold;color:#991b1b">${summary['Absent']}</div><small>Absent</small></div>
+            <div style="background:#fefce8; border:1px solid #fde68a; padding:0.5rem; text-align:center; border-radius:8px;"><div style="font-size:1.2rem;font-weight:bold;color:#854d0e">${summary['Leave']}</div><small>Leave</small></div>
+            <div style="background:#fffbeb; border:1px solid #fde68a; padding:0.5rem; text-align:center; border-radius:8px;"><div style="font-size:1.2rem;font-weight:bold;color:#854d0e">${summary['Half-Day']}</div><small>Half-Day</small></div>
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:0.5rem; text-align:center; border-radius:8px;"><div style="font-size:1.2rem;font-weight:bold;color:#1e40af">${summary['Holiday']}</div><small>Holiday</small></div>
+        `;
+        
+        if (data.records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No records found for this month.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.records.map(r => `
+            <tr>
+                <td>${new Date(r.date).toLocaleDateString()}</td>
+                <td><span class="status-select status-${r.status === 'Approved' ? 'approved' : r.status === 'Pending' ? 'pending' : r.status.toLowerCase()}">${r.status}</span> <br><small style="color:#6b7280">${r.approvalStatus}</small></td>
+                <td>${r.entryTime || r.exitTime ? `In: ${escapeHtml(r.entryTime||'-')}<br>Out: ${escapeHtml(r.exitTime||'-')}` : '-'}</td>
+                <td>${escapeHtml(r.remarks || '-')}</td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Server error</td></tr>';
+    }
+};
+
+// ============ PHASE 3: PAYROLL & SALARY SLIPS ============
+
+window.loadPayrollAdmin = async function() {
+    const monthInput = document.getElementById('payrollMonthSelect');
+    if (!monthInput.value) {
+        const now = new Date();
+        monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    }
+    const month = monthInput.value;
+    const tbody = document.getElementById('payrollAdminTable');
+    
+    try {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Loading...</td></tr>';
+        const res = await fetch(`${API_URL}/student-admin/payroll/list?month=${month}`, { headers });
+        const data = await res.json();
+        
+        if (!data.success) return tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${data.message}</td></tr>`;
+        if (data.data.length === 0) return tbody.innerHTML = `<tr><td colspan="5" class="empty-state">No staff found</td></tr>`;
+        
+        tbody.innerHTML = data.data.map(d => `
+            <tr>
+                <td><strong>${escapeHtml(d.name)}</strong> <br><small style="color:#6b7280">${d.employeeId}</small></td>
+                <td>₹${d.basicSalary}</td>
+                <td><strong>${d.payroll ? '₹' + d.payroll.netSalary : '-'}</strong></td>
+                <td>${d.payroll ? `<span class="badge paid">Generated</span>` : `<span class="badge pending">Pending</span>`}</td>
+                <td>
+                    <button class="action-btn btn-view" onclick="openPayrollModal('${d.staffId}', '${escapeHtml(d.name)}', ${d.basicSalary}, ${d.payroll ? d.payroll.allowances : 0}, ${d.payroll ? d.payroll.arrears : 0}, ${d.payroll ? d.payroll.deductions : 0})">${d.payroll ? '✏️ Edit' : '➕ Generate'}</button>
+                    ${d.payroll ? `<button class="action-btn" style="background:#2563eb; color:white;" onclick="downloadSalarySlip('${d.payroll._id}')">📄 PDF</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) { tbody.innerHTML = `<tr><td colspan="5" class="empty-state">Server error</td></tr>`; }
+};
+
+window.openPayrollModal = function(adminId, name, basic, allowance, arrears, deduction) {
+    document.getElementById('prAdminId').value = adminId;
+    document.getElementById('prStaffName').innerText = name + ' - ' + document.getElementById('payrollMonthSelect').value;
+    document.getElementById('prBasic').value = basic;
+    document.getElementById('prAllowance').value = allowance;
+    document.getElementById('prArrears').value = arrears;
+    document.getElementById('prDeduction').value = deduction;
+    window.calcNetSalary();
+    document.getElementById('payrollModal').classList.add('active');
+};
+
+window.calcNetSalary = function() {
+    const b = Number(document.getElementById('prBasic').value) || 0;
+    const a = Number(document.getElementById('prAllowance').value) || 0;
+    const arr = Number(document.getElementById('prArrears').value) || 0;
+    const d = Number(document.getElementById('prDeduction').value) || 0;
+    document.getElementById('prNet').value = (b + a + arr) - d;
+};
+
+document.getElementById('payrollForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button'); btn.textContent = 'Saving...'; btn.disabled = true;
+    try {
+        await fetch(`${API_URL}/student-admin/payroll/generate`, {
+            method: 'POST', headers, body: JSON.stringify({
+                adminId: document.getElementById('prAdminId').value, month: document.getElementById('payrollMonthSelect').value,
+                basicSalary: document.getElementById('prBasic').value, allowances: document.getElementById('prAllowance').value,
+                arrears: document.getElementById('prArrears').value,
+                deductions: document.getElementById('prDeduction').value, netSalary: document.getElementById('prNet').value
+            })
+        });
+        document.getElementById('payrollModal').classList.remove('active');
+        loadPayrollAdmin();
+    } catch(err) { alert('Error generating slip'); } finally { btn.textContent = 'Save & Generate'; btn.disabled = false; }
+});
+
+async function loadMySalarySlips() {
+    try {
+        const res = await fetch(`${API_URL}/student-admin/payroll/my`, { headers });
+        const data = await res.json();
+        const tbody = document.getElementById('mySalarySlipsTable');
+        tbody.innerHTML = data.slips.length ? data.slips.map(s => `<tr><td><strong>${s.month}</strong></td><td>₹${s.netSalary}</td><td><span class="badge paid">${s.status}</span></td><td><button class="sd-mini-btn" style="background:#2563eb; border:none" onclick="downloadSalarySlip('${s._id}')">📄 Download PDF</button></td></tr>`).join('') : `<tr><td colspan="4" class="empty-state">No salary slips generated yet.</td></tr>`;
+    } catch (e) { console.error(e); }
+}
+
+window.downloadSalarySlip = async function(id) {
+    try { 
+        const res = await fetch(`${API_URL}/student-admin/payroll/${id}/pdf`, { headers });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            return alert(`Cannot generate PDF: ${errData.error || errData.message || res.statusText}`);
+        }
+        const arrayBuffer = await res.arrayBuffer();
+        const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+        window.open(URL.createObjectURL(blob), '_blank'); 
+    } catch (e) { alert('Download error: ' + e.message); }
+};
 
 // call it once on load — add near your other initial calls at the bottom:
 loadTodayCollection();

@@ -447,3 +447,51 @@ function logout() {
     localStorage.removeItem('studentInfo');
     window.location.href = 'student-login.html';
 }
+
+// ============ CHANGE PASSWORD ============
+const pwdModalHtml = `
+<div id="studentPwdModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:white; padding:2.5rem; border-radius:20px; max-width:400px; width:90%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);">
+        <h3 style="color:#2563eb;margin-top:0">🔑 Change Password</h3>
+        <input type="password" id="studentCurrentPwd" placeholder="Current Password" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;box-sizing:border-box;font-family:inherit;">
+        <input type="password" id="studentNewPwd" placeholder="New Password (min 6 chars)" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:0.8rem;box-sizing:border-box;font-family:inherit;">
+        <input type="password" id="studentConfirmPwd" placeholder="Confirm New Password" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:1rem;box-sizing:border-box;font-family:inherit;">
+        <div style="display:flex;gap:0.5rem">
+            <button onclick="submitStudentChangePassword()" style="padding: 0.6rem 1.2rem; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family:inherit;">Update</button>
+            <button onclick="closeStudentChangePassword()" style="padding: 0.6rem 1.2rem; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family:inherit;">Cancel</button>
+        </div>
+        <div id="studentPwdMsg" style="margin-top:1rem; font-weight: 600;"></div>
+    </div>
+</div>
+`;
+document.body.insertAdjacentHTML('beforeend', pwdModalHtml);
+
+function openStudentChangePassword() { 
+    document.getElementById('studentPwdModal').style.display = 'flex'; 
+}
+function closeStudentChangePassword() {
+    document.getElementById('studentPwdModal').style.display = 'none';
+    document.getElementById('studentCurrentPwd').value = '';
+    document.getElementById('studentNewPwd').value = '';
+    document.getElementById('studentConfirmPwd').value = '';
+    document.getElementById('studentPwdMsg').innerHTML = '';
+}
+
+async function submitStudentChangePassword() {
+    const currentPassword = document.getElementById('studentCurrentPwd').value;
+    const newPassword = document.getElementById('studentNewPwd').value;
+    const confirmPwd = document.getElementById('studentConfirmPwd').value;
+    const msg = document.getElementById('studentPwdMsg');
+
+    if (!currentPassword || !newPassword) return msg.innerHTML = '<span style="color:#991b1b">❌ Fill all fields</span>';
+    if (newPassword !== confirmPwd) return msg.innerHTML = '<span style="color:#991b1b">❌ New passwords do not match</span>';
+    if (newPassword.length < 6) return msg.innerHTML = '<span style="color:#991b1b">❌ Min 6 characters</span>';
+
+    msg.innerHTML = '<span style="color:#2563eb">⏳ Updating...</span>';
+    try {
+        const res = await fetch(`${API_URL}/student/change-password`, { method: 'PUT', headers, body: JSON.stringify({ currentPassword, newPassword }) });
+        const r = await res.json();
+        if (r.success) { msg.innerHTML = '<span style="color:#065f46">✅ Password changed! Logging out...</span>'; setTimeout(logout, 2000); }
+        else { msg.innerHTML = `<span style="color:#991b1b">❌ ${r.message}</span>`; }
+    } catch (e) { msg.innerHTML = '<span style="color:#991b1b">❌ Server error</span>'; }
+}

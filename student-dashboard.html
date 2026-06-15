@@ -48,7 +48,8 @@
         .stat-big { font-size: 2.5rem; color: #2563eb; font-weight: 700; }
         @media (max-width: 600px) {
             .sd-header { flex-direction: column; align-items: flex-start; }
-            .logout-btn { width: 100%; }
+            .sd-actions { width: 100%; flex-direction: column !important; align-items: stretch !important; gap: 0.5rem !important; }
+            .logout-btn, #changePwdBtn { width: 100%; margin: 0 !important; }
             .sd-tabs { display: grid; grid-template-columns: 1fr; width: 100%; gap: 0.5rem; }
             .sd-tab { width: 100%; text-align: center; }
         }
@@ -67,8 +68,11 @@
         </div>
     </div>
 
-    <!-- Logout Button Only -->
-    <button class="logout-btn" onclick="logout()">Logout</button>
+    <!-- Actions -->
+    <div class="sd-actions" style="display: flex; align-items: center; gap: 1rem;">
+        <button id="changePwdBtn" onclick="openStudentChangePassword()" style="padding:0.4rem 0.8rem;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;font-size:0.85rem;font-family:inherit;font-weight:600;">🔑 Change Password</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
 </div>
 
         <div class="sd-tabs">

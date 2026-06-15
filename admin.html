@@ -167,6 +167,26 @@
         .sd-mini-btn:hover { background: #2563eb; }
     </style>
 </head>
+    <style>
+        .perm-category {
+            background: #f1f5f9;
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 0.8rem;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .perm-category-content {
+            padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+            border-left: 2px solid #e2e8f0;
+            display: none; /* Hidden by default */
+        }
+        .perm-category-content.active { display: block; }
+    </style>
 <body>
     <div class="admin-container">
         
@@ -200,14 +220,15 @@
             <button class="tab-btn" onclick="showTab('gallery', this)">📸 Gallery</button>
             <button class="tab-btn" onclick="showTab('news', this)">📰 News</button>
             <button class="tab-btn" onclick="showTab('documents', this)">📄 Documents</button>
-            <button class="tab-btn" onclick="showTab('students', this)">🎓 Students</button>
-            <button class="tab-btn" id="adminsTabBtn" onclick="showTab('admins', this)" style="display:none">🔐 Manage Admins</button>
+            <button class="tab-btn" onclick="showTab('students', this)">🎓 Student Directory</button>
+            <button class="tab-btn" id="adminsTabBtn" onclick="showTab('admins', this)" style="display:none">👔 Staff Directory</button>
             <button class="tab-btn" id="auditTabBtn" onclick="showTab('audit', this)" style="display:none">🔍 Audit Log</button>
             <button class="tab-btn" id="reportTabBtn" onclick="showTab('report', this)" style="display:none">📊 Collection Report</button>
+            <button class="tab-btn" id="teacherWorkspaceTabBtn" onclick="showTab('teacher-workspace', this)" style="display:none">👤 My Workspace</button>
         </div>
         
         
-        <div class="search-bar">
+        <div class="search-bar" id="globalSearchBar">
             <span class="search-icon">🔍</span>
             <input type="text" id="searchInput" placeholder="Search by name, email, or phone..." onkeyup="handleSearch()">
             <select id="filterStatus" onchange="handleSearch()">
@@ -224,7 +245,7 @@
 
         <!-- APPLICATIONS TAB -->
         <div id="applications-tab">
-            <button onclick="exportApplications()" class="btn btn-primary" style="margin-bottom:1rem">📥 Export to Excel (CSV)</button>
+            <button onclick="exportApplications()" class="btn btn-primary" style="margin-bottom:1rem" data-perm="applications.export">📥 Export to Excel (CSV)</button>
             <div class="table-container">
                 <table class="data-table">
                     <thead>
@@ -332,122 +353,200 @@
 
         <!-- STUDENTS TAB (FIXED WRAPPER) -->
         <div id="students-tab" class="hidden">
-            <!-- 1. Add Student -->
-            <div data-perm="students.list" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-                
-                <h3 style="margin-top:0;color:#2563eb">➕ Add Student</h3>
-                
-                <form id="studentForm" style="display:grid;gap:1rem">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                        <input type="text" name="name" placeholder="Name *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <input type="text" name="rollNumber" placeholder="Roll Number *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
-                        <input type="text" name="class" placeholder="Class *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <input type="text" name="section" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                        <input type="text" name="parentName" placeholder="Parent Name" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <input type="text" name="phone" placeholder="Phone" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="justify-self:start">Add Single Student</button>
-                </form>
-                <div id="studentMsg" style="margin-top:1rem"></div>
-
-                <div style="display:flex;align-items:center;margin:2rem 0;color:#9ca3af;font-weight:600">
-                    <div style="flex:1;height:1px;background:#e5e7eb"></div>
-                    <span style="padding:0 1rem;font-size:0.85rem;letter-spacing:1px;">OR BULK UPLOAD</span>
-                    <div style="flex:1;height:1px;background:#e5e7eb"></div>
-                </div>
-
-                <p style="color:#6b7280; font-size: 0.9rem; margin-bottom: 0.8rem;">Upload a CSV file. Need the correct format?</p>
-                <form id="bulkUploadForm" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
-                    <input type="file" id="bulkStudentFile" accept=".csv" required style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;background:#f9fafb;flex:1;min-width:250px;color:#4b5563;">
-                    <button type="submit" class="btn btn-primary">Upload CSV</button>
-                    <a href="data:text/csv;charset=utf-8,Name,Roll Number,Class,Section,Password,Parent Name,Phone%0AJohn Doe,101,10,A,123456,Robert Doe,9876543210" download="AJS_Student_Upload_Template.csv" style="padding:0.6rem 1rem; background:#f3f4f6; color:#374151; text-decoration:none; border-radius:8px; border:1px solid #d1d5db; font-weight:600; white-space:nowrap; transition: background 0.2s;">
-                        ⬇️ Download Template
-                    </a>
-                </form>
-                <div id="bulkUploadMsg" style="margin-top:1rem"></div>
+            <!-- Student Sub-Navigation -->
+            <div class="tabs" style="background: #f1f5f9; padding: 0.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="student-sub-tab-btn active" onclick="showStudentSubTab('student-list', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: #2563eb; color: white;" data-perm="students.list">👥 All Students</button>
+                <button class="student-sub-tab-btn" onclick="showStudentSubTab('student-add', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent; color: #475569;" data-perm="students.add">➕ Add Student</button>
+                <button class="student-sub-tab-btn" onclick="showStudentSubTab('student-manage', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent; color: #475569;" data-perm="students.manage">⚙️ Manage Data</button>
             </div>
 
-         
-
-            <!-- 2. Manage Student Data -->
-            <div data-perm="students.manage" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-                <h3 style="margin-top:0;color:#2563eb">⚙️ Manage Student Data</h3>
-                <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
-                    <select id="manageClass" onchange="loadClassStudents()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <option value="">Select Class...</option>
-                    </select>
-                    <input type="text" id="studentSearch" onkeyup="filterStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px" disabled>
+            <!-- Sections -->
+            <div id="student-list-sec">
+                <div data-perm="students.list">
+                    <h3 style="color:#2563eb; margin-top:0;">All Students</h3>
+                    <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
+                        <select id="listClassFilter" onchange="loadStudentsAdmin(1)" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit;">
+                            <option value="">All Classes</option>
+                        </select>
+                        <input type="text" id="listSearch" onkeyup="if(event.key === 'Enter') loadStudentsAdmin(1)" placeholder="🔍 Search by name or roll... (Press Enter)" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit;">
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
+                        <button onclick="exportStudents()" class="btn btn-primary" data-perm="students.export">📥 Export Students to CSV</button>
+                    </div>
+                    <div id="adminStudentList" style="display:grid;gap:1rem"></div>
+                    <div id="listPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
                 </div>
-                
-               <div style="margin-bottom:0.5rem">
-    <label style="font-weight:600;cursor:pointer;color:#2563eb;display:none" id="selectAllWrap">
-        <div id="classLevelActions" style="display:none;margin-bottom:0.8rem"></div>
-        <input type="checkbox" id="selectAllStudents" onchange="toggleAllManage(this.checked)" style="accent-color:#2563eb"> Select All
-    </label>
-</div>
-<div id="studentChecklist" style="max-height:300px;overflow-y:auto;border:2px solid #e5e7eb;border-radius:8px;padding:0.5rem;margin-bottom:0.8rem;display:none"></div>
-
-<div id="selectionInfo" style="color:#6b7280;font-size:0.9rem;margin-bottom:0.5rem"></div>
-
-<div id="manageActions" style="display:none;gap:0.5rem;flex-wrap:wrap"></div>
-<div id="manageForms" style="margin-top:1rem"></div>
-
-
-                <div id="manageForms" style="margin-top:1rem"></div>
             </div>
 
-       
+            <div id="student-add-sec" class="hidden">
+                <div data-perm="students.add" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                    <h3 style="margin-top:0;color:#2563eb">➕ Add Student</h3>
+                    <form id="studentForm" style="display:grid;gap:1rem">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                            <input type="text" name="name" placeholder="Name *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                            <input type="text" name="rollNumber" placeholder="Roll Number *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+                            <input type="text" name="class" placeholder="Class *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                            <input type="text" name="section" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                            <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                            <input type="text" name="parentName" placeholder="Parent Name" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                            <input type="text" name="phone" placeholder="Phone" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="justify-self:start">Add Single Student</button>
+                    </form>
+                    <div id="studentMsg" style="margin-top:1rem"></div>
 
+                    <div style="display:flex;align-items:center;margin:2rem 0;color:#9ca3af;font-weight:600">
+                        <div style="flex:1;height:1px;background:#e5e7eb"></div>
+                        <span style="padding:0 1rem;font-size:0.85rem;letter-spacing:1px;">OR BULK UPLOAD</span>
+                        <div style="flex:1;height:1px;background:#e5e7eb"></div>
+                    </div>
 
-
-            <!-- 5. Student List -->
-            <div data-perm="students.list">
-                <h3 style="color:#2563eb">All Students</h3>
-                
-                <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
-                    <select id="listClassFilter" onchange="renderStudentList()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit;">
-                        <option value="">All Classes</option>
-                    </select>
-                    <input type="text" id="listSearch" onkeyup="renderStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit;">
+                    <p style="color:#6b7280; font-size: 0.9rem; margin-bottom: 0.8rem;">Upload a CSV file. Need the correct format?</p>
+                    <form id="bulkUploadForm" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;">
+                        <input type="file" id="bulkStudentFile" accept=".csv" required style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;background:#f9fafb;flex:1;min-width:250px;color:#4b5563;">
+                        <button type="submit" class="btn btn-primary">Upload CSV</button>
+                        <a href="data:text/csv;charset=utf-8,Name,Roll Number,Class,Section,Password,Parent Name,Phone%0AJohn Doe,101,10,A,123456,Robert Doe,9876543210" download="AJS_Student_Upload_Template.csv" style="padding:0.6rem 1rem; background:#f3f4f6; color:#374151; text-decoration:none; border-radius:8px; border:1px solid #d1d5db; font-weight:600; white-space:nowrap; transition: background 0.2s;">
+                            ⬇️ Download Template
+                        </a>
+                    </form>
+                    <div id="bulkUploadMsg" style="margin-top:1rem"></div>
                 </div>
+            </div>
 
-                <div style="display:flex; justify-content:flex-end; margin-bottom:1rem;">
-                    <button onclick="exportStudents()" class="btn btn-primary">📥 Export Students to CSV</button>
+            <div id="student-manage-sec" class="hidden">
+                <div data-perm="students.manage" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                    <h3 style="margin-top:0;color:#2563eb">⚙️ Manage Student Data</h3>
+                    <div style="display:grid;grid-template-columns:1fr 2fr;gap:1rem;margin-bottom:1rem">
+                        <select id="manageClass" onchange="loadClassStudents()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                            <option value="">Select Class...</option>
+                        </select>
+                        <input type="text" id="studentSearch" onkeyup="filterStudentList()" placeholder="🔍 Search by name or roll..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px" disabled>
+                    </div>
+                    
+                    <div style="margin-bottom:0.5rem">
+                        <label style="font-weight:600;cursor:pointer;color:#2563eb;display:none" id="selectAllWrap">
+                            <div id="classLevelActions" style="display:none;margin-bottom:0.8rem"></div>
+                            <input type="checkbox" id="selectAllStudents" onchange="toggleAllManage(this.checked)" style="accent-color:#2563eb"> Select All
+                        </label>
+                    </div>
+                    <div id="studentChecklist" style="max-height:300px;overflow-y:auto;border:2px solid #e5e7eb;border-radius:8px;padding:0.5rem;margin-bottom:0.8rem;display:none"></div>
+
+                    <div id="selectionInfo" style="color:#6b7280;font-size:0.9rem;margin-bottom:0.5rem"></div>
+
+                    <div id="manageActions" style="display:none;gap:0.5rem;flex-wrap:wrap"></div>
+                    <div id="manageForms" style="margin-top:1rem"></div>
                 </div>
-                
-                <div id="adminStudentList" style="display:grid;gap:1rem"></div>
-                <div id="listPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
             </div>
         </div> 
-
         
         <!-- END OF STUDENTS TAB -->
 
         <!-- ADMINS TAB -->
         <div id="admins-tab" class="hidden">
-            <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
-                <h3 style="margin-top:0;color:#2563eb">➕ Create Sub-Admin</h3>
-                <form id="adminForm" style="display:grid;gap:1rem">
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
-                        <input type="text" name="username" placeholder="Username *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <input type="email" name="email" placeholder="Email *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                        <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-                    </div>
-                    <div>
-                        <label style="font-weight:600;display:block;margin-bottom:0.5rem">Permissions:</label>
-                        <div id="permCheckboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem"></div>
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="justify-self:start">Create Sub-Admin</button>
-                </form>
-                <div id="adminMsg" style="margin-top:1rem"></div>
+            <!-- Staff Sub-Navigation -->
+            <div class="tabs" style="background: #f1f5f9; padding: 0.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="staff-sub-tab-btn active" onclick="showStaffSubTab('staff-list', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: #2563eb; color: white;" data-perm="staff.view">👥 All Staff Members</button>
+                <button class="staff-sub-tab-btn" onclick="showStaffSubTab('staff-create', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent; color: #475569;" data-perm="staff.create">➕ Create Sub-Admin</button>
+                <button class="staff-sub-tab-btn" onclick="showStaffSubTab('staff-approvals', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent; color: #475569;" data-perm="staff.attendance.approve">🔔 Pending Approvals</button>
+                <button class="staff-sub-tab-btn" onclick="showStaffSubTab('staff-roster', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent; color: #475569;" data-perm="staff.attendance.approve">📋 Daily Roster</button>
+                <button class="staff-sub-tab-btn" onclick="showStaffSubTab('staff-history', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent; color: #475569;" data-perm="staff.attendance.approve">📅 Attendance History</button>
+                <button class="staff-sub-tab-btn" onclick="showStaffSubTab('staff-payroll', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent; color: #475569;" data-perm="staff.payroll.manage">💸 Payroll</button>
             </div>
-            <h3 style="color:#2563eb">All Admins</h3>
-            <div id="adminsList" style="display:grid;gap:1rem"></div>
+
+            <!-- Sections -->
+            <div id="staff-list-sec" data-perm="staff.view">
+                <div id="adminsList" style="display:grid;gap:1rem;margin-bottom:2rem; max-height: 70vh; overflow-y: auto; padding: 5px;"></div>
+            </div>
+
+            <div id="staff-create-sec" class="hidden">
+                <div data-perm="staff.create" style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08);margin-bottom:1.5rem">
+                    <h3 style="margin-top:0;color:#2563eb">➕ Create Sub-Admin</h3>
+                    <form id="adminForm" style="display:grid;gap:1rem">
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+                            <input type="text" name="username" placeholder="Username *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                            <input type="email" name="email" placeholder="Email *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                            <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                        </div>
+                        <div>
+                            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Permissions:</label>
+                            <div id="permCheckboxes" style="max-height: 350px; overflow-y: auto; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 8px;"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="justify-self:start">Create Sub-Admin</button>
+                    </form>
+                    <div id="adminMsg" style="margin-top:1rem"></div>
+                </div>
+            </div>
+
+            <div id="staff-approvals-sec" class="hidden">
+                <div data-perm="staff.attendance.approve" class="stat-card" style="border-top: 4px solid #ef4444; margin-bottom: 2rem;">
+                    <h3 style="color:#ef4444; margin-top:0; font-size:1.5rem;">🔔 Pending Attendance Approvals</h3>
+                    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                        <table class="data-table">
+                            <thead><tr><th>Teacher</th><th>Date</th><th>Status</th><th>Time & Remarks</th><th>Actions</th></tr></thead>
+                            <tbody id="pendingStaffAttendanceTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="staff-roster-sec" class="hidden">
+                <div data-perm="staff.attendance.approve" class="stat-card" style="border-top: 4px solid #2563eb; margin-bottom: 2rem;">
+                    <h3 style="color:#2563eb; margin-top:0; font-size:1.5rem;">📋 Daily Staff Attendance Roster</h3>
+                    <p style="color:#6b7280; font-size:0.9rem;">Bulk mark or edit daily attendance for all registered staff members.</p>
+                    <input type="date" id="staffBulkAttDate" onchange="loadStaffAttendanceToday()" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px; margin-bottom:1rem;">
+                    <div style="margin-bottom: 1rem;">
+                        <label style="font-weight:600;cursor:pointer;color:#2563eb;">
+                            <input type="checkbox" id="sattSelectAll" onchange="document.querySelectorAll('.satt-select-cb').forEach(cb => cb.checked = this.checked)" checked>
+                            Select/Deselect All
+                        </label>
+                    </div>
+                    <div id="staffBulkAttRows" style="margin-bottom: 1rem; max-height: 400px; overflow-y: auto;"></div>
+                    <button id="saveStaffAttBtn" type="button" class="btn btn-primary" onclick="submitStaffAttendanceBulk()">Save Attendance for Selected</button>
+                </div>
+            </div>
+
+            <div id="staff-history-sec" class="hidden">
+                <div data-perm="staff.attendance.approve" class="stat-card" style="border-top: 4px solid #2563eb;">
+                    <h3 style="color:#2563eb; margin-top:0; font-size:1.5rem;">📅 Staff Attendance History</h3>
+                    <p style="color:#6b7280; font-size:0.9rem;">View monthly attendance records for any staff member.</p>
+                    
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                        <select id="historyStaffSelect" onchange="loadStaffHistory()" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px;">
+                            <option value="">Select Staff Member...</option>
+                        </select>
+                        <input type="month" id="historyMonthSelect" onchange="loadStaffHistory()" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px;">
+                    </div>
+                    
+                    <div id="staffHistorySummaryGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 1rem; margin-bottom: 1rem;"></div>
+                    
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead><tr><th>Date</th><th>Status</th><th>Entry/Exit</th><th>Remarks</th></tr></thead>
+                            <tbody id="staffHistoryTable">
+                                <tr><td colspan="4" class="empty-state">Select a staff member and month</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="staff-payroll-sec" class="hidden">
+                <div data-perm="staff.payroll.manage" class="stat-card" style="border-top: 4px solid #2563eb;">
+                    <h3 style="color:#2563eb; margin-top:0; font-size:1.5rem;">💸 Staff Payroll Generation</h3>
+                    <p style="color:#6b7280; font-size:0.9rem;">Generate and distribute monthly salary slips.</p>
+                    <input type="month" id="payrollMonthSelect" onchange="loadPayrollAdmin()" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px; margin-bottom:1rem;">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead><tr><th>Staff Member</th><th>Basic Salary</th><th>Net Payable</th><th>Status</th><th>Actions</th></tr></thead>
+                            <tbody id="payrollAdminTable"><tr><td colspan="5" class="empty-state">Select a month to view payroll</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 
       <!-- AUDIT LOG TAB -->
@@ -570,6 +669,101 @@
             <div id="adminDocList" style="display:grid;gap:1rem"></div>
         </div>
 
+        <!-- TEACHER WORKSPACE TAB -->
+        <div id="teacher-workspace-tab" class="hidden">
+            <!-- Workspace Sub-Navigation -->
+            <div class="tabs" style="background: #f1f5f9; padding: 0.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="workspace-sub-tab-btn active" onclick="showWorkspaceSubTab('workspace-attendance', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: #2563eb; color: white;">📅 My Attendance</button>
+                <button class="workspace-sub-tab-btn" onclick="showWorkspaceSubTab('workspace-payroll', this)" style="padding: 0.6rem 1.2rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: transparent; color: #475569;">💸 My Payroll</button>
+            </div>
+
+            <div id="workspace-attendance-sec">
+                <div style="display:grid; grid-template-columns: 1fr; gap: 2rem;">
+                    <!-- Teacher View: Mark Attendance & History -->
+                    <div class="stat-card">
+                        <h3 style="color:#2563eb; margin-top:0; font-size:1.5rem;">📅 Mark My Attendance</h3>
+                    <form id="markSelfAttendanceForm" style="display:flex; flex-direction:column; gap:1rem;">
+                        <div style="display:flex; gap:1rem; align-items:flex-end; flex-wrap:wrap;">
+                            <div>
+                                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Date</label>
+                                <input type="date" id="selfAttDate" required style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                            </div>
+                            <div>
+                                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Status</label>
+                                <select id="selfAttStatus" style="padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px">
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Half-Day">Half-Day</option>
+                                    <option value="Leave">Leave</option>
+                                    <option value="Holiday">Holiday</option>
+                                </select>
+                            </div>
+                            <div style="flex:1; min-width:200px;">
+                                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Remarks (optional)</label>
+                                <input type="text" id="selfAttRemarks" placeholder="Reason for leave, etc..." style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                            </div>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Entry Time</label>
+                                <input type="time" id="selfAttEntryTime" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                            </div>
+                            <div>
+                                <label style="display:block;margin-bottom:0.5rem;font-weight:600">Exit Time</label>
+                                <input type="time" id="selfAttExitTime" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="align-self:flex-start;">Submit Attendance</button>
+                    </form>
+                    <div id="selfAttMsg" style="margin-top:0.5rem"></div>
+                </div>
+
+                <div class="stat-card">
+                    <h3 style="color:#2563eb; margin-top:0; font-size:1.5rem;">👤 My Attendance Calendar</h3>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+                        <div>
+                            <button class="sd-mini-btn" style="background:#64748b; padding:0.6rem;" onclick="changeTeacherCalendarYear(-1)">«</button>
+                            <button class="sd-mini-btn" style="background:#64748b;" onclick="changeTeacherCalendarMonth(-1)">‹ Prev</button>
+                        </div>
+                        <h4 id="teacherCalendarMonth" style="margin:0; font-size:1.2rem; color:#334155;"></h4>
+                        <div>
+                            <button class="sd-mini-btn" style="background:#64748b;" onclick="changeTeacherCalendarMonth(1)">Next ›</button>
+                            <button class="sd-mini-btn" style="background:#64748b; padding:0.6rem;" onclick="changeTeacherCalendarYear(1)">»</button>
+                        </div>
+                    </div>
+                <div class="stat-card" id="staffAttendanceSummaryCard" style="margin-bottom: 2rem;">
+                    <h3 style="color:#2563eb; margin-top:0; font-size:1.5rem;">Attendance Summary</h3>
+                    <div id="staffAttendanceSummaryGrid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
+                        <!-- JS will populate this -->
+                    </div>
+                </div>
+
+                    <div id="teacherCalendarGrid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align:center;">
+                        <!-- Generated by JS -->
+                    </div>
+                    <div style="display:flex; gap:1rem; margin-top:1rem; justify-content:center; font-size:0.85rem; flex-wrap:wrap;">
+                        <span style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;background:#d1fae5;border-radius:3px;border:1px solid #10b981;"></div> Present</span>
+                        <span style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;background:#fee2e2;border-radius:3px;border:1px solid #ef4444;"></div> Absent</span>
+                        <span style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;background:#fef3c7;border-radius:3px;border:1px solid #f59e0b;"></div> Half-Day/Leave</span>
+                        <span style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;background:#eff6ff;border-radius:3px;border:1px solid #6366f1;"></div> Holiday</span>
+                        <span style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:12px;background:#e0e7ff;border-radius:3px;border:1px solid #6366f1;"></div> Pending Approval</span>
+                    </div>
+                </div>
+            </div>
+            </div>
+            
+            <div id="workspace-payroll-sec" class="hidden">
+                <div class="stat-card">
+                <h3 style="color:#2563eb; margin-top:0; font-size:1.5rem;">📄 My Salary Slips</h3>
+                <p style="color:#6b7280; font-size:0.9rem; margin-bottom:1rem;">View and download your official monthly payment records.</p>
+                <table class="data-table">
+                    <thead><tr><th>Month</th><th>Net Salary</th><th>Status</th><th>Download</th></tr></thead>
+                    <tbody id="mySalarySlipsTable"></tbody>
+                </table>
+            </div>
+            </div>
+        </div>
+
     </div> <!-- CLOSE MAIN CONTAINER -->
 
     <!-- ================= MODALS ================= -->
@@ -592,6 +786,17 @@
                 <div class="detail-row" style="margin-bottom:0">
                     <strong>Username:</strong> <span id="editAdminUsername" style="color:#4b5563"></span>
                 </div>
+                
+                <h4 style="margin-top: 1rem; margin-bottom: 0.5rem; color: #2563eb;">👔 Employee Profile (Phase 1)</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
+                    <input type="text" id="editAdminRealName" placeholder="Real Full Name" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px;">
+                    <input type="text" id="editAdminEmployeeId" placeholder="Employee ID (e.g., EMP-001)" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px;">
+                    <input type="text" id="editAdminPhone" placeholder="Phone Number" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px;">
+                    <input type="text" id="editAdminQualifications" placeholder="Qualifications (e.g., M.Sc, B.Ed)" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px;">
+                    <input type="date" id="editAdminJoiningDate" placeholder="Joining Date" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px;">
+                    <input type="number" id="editAdminBasicSalary" placeholder="Basic Salary (₹)" style="padding:0.6rem; border:2px solid #e5e7eb; border-radius:8px;">
+                </div>
+
                 <div style="background:#f9fafb; padding:1rem; border-radius:8px; border: 1px solid #e5e7eb;">
                     <label style="font-weight:600;display:block;margin-bottom:0.5rem;color:#1f2937">🔑 Reset Password (Optional)</label>
                     <small style="color:#6b7280; display:block; margin-bottom:0.5rem;">Leave blank to keep current password.</small>
@@ -599,10 +804,38 @@
                 </div>
                 <div>
                     <label style="font-weight:600;display:block;margin-bottom:0.5rem;color:#1f2937">🛡️ Update Permissions:</label>
-                    <div id="editPermCheckboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.5rem"></div>
+                    <div id="editPermCheckboxes" style="max-height: 350px; overflow-y: auto; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 8px;"></div>
                 </div>
                 <button type="submit" class="btn btn-primary" style="justify-self:start; margin-top:0.5rem;">Save All Changes</button>
                 <div id="editAdminMsg" style="margin-top:0.5rem"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Generate Payroll Modal -->
+    <div id="payrollModal" class="modal">
+        <div class="modal-content" style="max-width:500px;">
+            <button class="modal-close" onclick="document.getElementById('payrollModal').classList.remove('active')">×</button>
+            <h2 style="color:#2563eb;margin-top:0">💸 Generate Salary Slip</h2>
+            <h4 id="prStaffName" style="margin-top:0; color:#475569;"></h4>
+            <form id="payrollForm" style="display:grid;gap:1rem">
+                <input type="hidden" id="prAdminId">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                    <div><label style="font-weight:600;display:block;margin-bottom:0.3rem">Basic Salary (₹)</label>
+                    <input type="number" id="prBasic" required oninput="calcNetSalary()" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;"></div>
+                    <div><label style="font-weight:600;display:block;margin-bottom:0.3rem">Net Payable (₹)</label>
+                    <input type="number" id="prNet" required style="width:100%;padding:0.6rem;border:2px solid #10b981;background:#ecfdf5;border-radius:8px;box-sizing:border-box;"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+                    <div><label style="font-weight:600;display:block;margin-bottom:0.3rem">Allowances/Bonus (₹)</label>
+                    <input type="number" id="prAllowance" value="0" oninput="calcNetSalary()" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;"></div>
+                    <div><label style="font-weight:600;display:block;margin-bottom:0.3rem">Arrears (₹)</label>
+                    <input type="number" id="prArrears" value="0" oninput="calcNetSalary()" style="width:100%;padding:0.6rem;border:2px solid #e5e7eb;border-radius:8px;box-sizing:border-box;"></div>
+                    <div><label style="font-weight:600;display:block;margin-bottom:0.3rem">Deductions (Leaves/Tax)</label>
+                    <input type="number" id="prDeduction" value="0" oninput="calcNetSalary()" style="width:100%;padding:0.6rem;border:2px solid #ef4444;border-radius:8px;box-sizing:border-box;"></div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="margin-top:0.5rem">Save & Generate</button>
+                <div id="prMsg"></div>
             </form>
         </div>
     </div>
