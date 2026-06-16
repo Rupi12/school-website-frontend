@@ -5,10 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Amar Jyoti School - Home</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="css/styles.css?v=19">
+    <link rel="stylesheet" href="css/styles.css?v=31">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Page Transition Fader -->
+    <div class="page-fader" id="pageFader"></div>
+
+    <!-- Scroll Progress Bar -->
+    <div class="scroll-progress-container">
+        <div class="scroll-progress-bar" id="scrollProgressBar"></div>
+    </div>
+
     <!-- Navigation -->
    <!-- Navigation -->
     <nav class="navbar">
@@ -60,16 +68,22 @@
             </div>
         </div>
         
+        <!-- Animated Scroll Indicator -->
+        <a href="#features" class="scroll-indicator">
+            <div class="mouse"></div>
+            SCROLL
+        </a>
+
         <!-- Elegant Bottom Wave -->
         <div style="position: absolute; bottom: -1px; left: 0; width: 100%; overflow: hidden; line-height: 0;">
-            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" style="position: relative; display: block; width: calc(100% + 1.3px); height: 70px;">
-                <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" fill="#ffffff"></path>
+            <svg viewBox="0 0 1440 120" preserveAspectRatio="none" style="position: relative; display: block; width: 100%; height: 70px;">
+                <path d="M0,80 C240,110 480,50 720,50 C960,50 1200,110 1440,80 L1440,120 L0,120 Z" fill="#ffffff"></path>
             </svg>
         </div>
     </section>
 
     <!-- Features Section -->
-    <section class="features">
+    <section class="features" id="features">
         <h2 class="section-title">Why Choose Us?</h2>
         <div class="features-grid">
             <div class="feature-card">
@@ -147,10 +161,10 @@
         <div class="footer-section">
             <h3>Follow Us</h3>
             <div class="social-links">
-                <a href="#">📘</a>
-                <a href="#">🐦</a>
-                <a href="#">📷</a>
-                <a href="#">💼</a>
+                <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M12 2.04C6.5 2.04 2 6.53 2 12.06c0 5.52 4.5 10.02 10 10.02s10-4.5 10-10.02C22 6.53 17.5 2.04 12 2.04zM16.5 8.26h-1.88c-.47 0-.57.22-.57.58v1.03h2.45l-.32 2.48h-2.13v6.53H11.4V12.35H9.5V9.87h1.9V8.08c0-1.88 1.14-2.92 2.8-2.92h1.3v2.1z"/></svg></a>
+                <a href="#" aria-label="Twitter"><svg viewBox="0 0 24 24"><path d="M22.46 6c-.64.28-1.32.47-2.03.56.74-.44 1.3-1.14 1.56-1.95-.69.41-1.46.71-2.28.87-.65-.69-1.58-1.12-2.6-1.12-1.97 0-3.56 1.6-3.56 3.56 0 .28.03.55.09.81-2.96-.15-5.58-1.57-7.34-3.72-.3.53-.48 1.14-.48 1.8 0 1.23.63 2.32 1.58 2.95-.58-.02-1.13-.18-1.61-.44v.04c0 1.72 1.22 3.16 2.85 3.49-.3.08-.61.12-.94.12-.23 0-.45-.02-.67-.06.45 1.41 1.77 2.44 3.33 2.47-1.22.96-2.75 1.53-4.42 1.53-.29 0-.57-.02-.85-.05 1.57 1.01 3.44 1.6 5.46 1.6 6.55 0 10.14-5.44 10.14-10.14 0-.15 0-.3-.01-.45.7-.5 1.3-1.12 1.78-1.84z"/></svg></a>
+                <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 2c-2.72 0-3.06.01-4.12.06-1.06.05-1.79.23-2.43.48-.65.25-1.13.59-1.62 1.08-.49.49-.83.97-1.08 1.62-.25.64-.43 1.37-.48 2.43C2.01 8.94 2 9.28 2 12s.01 3.06.06 4.12c.05 1.06.23 1.79.48 2.43.25.65.59 1.13 1.08 1.62.49.49.97.83 1.62 1.08.64.25 1.37.43 2.43.48 1.06.05 1.4.06 4.12.06s3.06-.01 4.12-.06c1.06-.05 1.79-.23 2.43-.48.65-.25 1.13-.59 1.62-1.08.49-.49.83-.97 1.08-1.62.25-.64.43-1.37.48-2.43.05-1.06.06-1.4.06-4.12s-.01-3.06-.06-4.12c-.05-1.06-.23-1.79-.48-2.43-.25-.65-.59-1.13-1.08-1.62-.49-.49-.97-.83-1.62-1.08-.64-.25-1.37-.43-2.43-.48C15.06 2.01 14.72 2 12 2zm0 1.8c2.67 0 2.98.01 4.04.06 1-.05 1.5.12 1.87.27.45.18.78.43 1.12.78.34.34.59.67.78 1.12.15.37.32.87.27 1.87.05 1.06.06 1.37.06 4.04s-.01 2.98-.06 4.04c-.05 1 .12 1.5-.27 1.87-.18.45-.43.78-.78 1.12-.34.34-.67.59-1.12-.78.37.15-.87.32-1.87.27-1.06.05-1.37.06-4.04.06s-2.98-.01-4.04-.06c-1-.05-1.5-.12-1.87-.27-.45-.18-.78-.43-1.12-.78-.34-.34-.59-.67-.78-1.12-.15-.37-.32-.87-.27-1.87-.05-1.06-.06-1.37-.06-4.04s.01-2.98.06-4.04c.05-1-.12-1.5.27-1.87.18-.45.43-.78.78-1.12.34-.34.67-.59-1.12-.78.37-.15.87-.32 1.87-.27C9.02 3.81 9.33 3.8 12 3.8zm0 3.35c-2.65 0-4.8 2.15-4.8 4.8s2.15 4.8 4.8 4.8 4.8-2.15 4.8-4.8-2.15-4.8-4.8-4.8zm0 7.8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm4.95-8.2c-.58 0-1.05-.47-1.05-1.05s.47-1.05 1.05-1.05 1.05.47 1.05 1.05-.47 1.05-1.05 1.05z"/></svg></a>
+                <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14zm-11 5v9h3V8h-3zm-1-2h5v13H7V6zm12 0h-3.26a3.26 3.26 0 0 0-3.24 3.24V19h3v-5.76c0-1.24.74-2.24 2-2.24s2 1 2 2.24V19h3V11.24A3.26 3.26 0 0 0 19 8zM5.5 4.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"/></svg></a>
             </div>
         </div>
     </div>

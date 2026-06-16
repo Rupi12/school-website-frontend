@@ -67,6 +67,41 @@ if (hamburger) {
     });
 }
 
+// ============ SEAMLESS PAGE TRANSITIONS ============
+document.addEventListener('DOMContentLoaded', () => {
+    const fader = document.getElementById('pageFader');
+    if (fader) {
+        // On page load, fade out the overlay
+        fader.classList.add('fade-out');
+    }
+
+    const allLinks = document.querySelectorAll('a');
+    allLinks.forEach(link => {
+        link.addEventListener('click', e => {
+            const href = link.getAttribute('href');
+            // Check if it's a valid, internal, non-special link
+            const isExternal = href && href.startsWith('http') && !href.includes(window.location.hostname);
+            const isAnchor = href && href.startsWith('#');
+            const isSpecial = link.getAttribute('target') === '_blank' || link.hasAttribute('download') || link.getAttribute('onclick');
+
+            if (href && !isExternal && !isAnchor && !isSpecial) {
+                e.preventDefault(); // Stop immediate navigation
+                if (fader) fader.classList.remove('fade-out'); // Fade to black
+                setTimeout(() => { window.location.href = href; }, 400); // Navigate after fade
+            }
+        });
+    });
+});
+
+// Scroll Progress Bar
+window.addEventListener('scroll', () => {
+    const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+    const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const scrolled = (winScroll / height) * 100;
+    const progressBar = document.getElementById('scrollProgressBar');
+    if (progressBar) progressBar.style.width = scrolled + '%';
+});
+
 // Counter Animation
 const counters = document.querySelectorAll('.counter');
 const animateCounter = (counter) => {

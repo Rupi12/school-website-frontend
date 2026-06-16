@@ -44,7 +44,7 @@
     <path d="M250 110 C290 160 300 210 275 250 C300 210 295 170 250 110 Z" fill="url(#premiumGold)" opacity="0.4"/>
     <path d="M250 120 C215 180 210 230 250 270 C290 230 285 180 250 120 Z" fill="url(#jyotiFlame)"/>
     <path d="M250 160 C230 200 230 235 250 265 C270 235 270 200 250 160 Z" fill="#FFF5C0" opacity="0.9"/>
-  </g>
+  </g> 
 
   <!-- MID LEVEL: MODERN 'AJS' TYPOGRAPHY -->
   <text x="250" y="290" font-family="'Montserrat', 'Poppins', 'Helvetica Neue', sans-serif" font-size="110" font-weight="900" fill="url(#premiumGold)" text-anchor="middle" filter="url(#subtleShadow)" letter-spacing="6">AJS</text>
