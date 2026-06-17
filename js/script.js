@@ -100,6 +100,37 @@ window.addEventListener('scroll', () => {
     const scrolled = (winScroll / height) * 100;
     const progressBar = document.getElementById('scrollProgressBar');
     if (progressBar) progressBar.style.width = scrolled + '%';
+    
+    // Dynamic Navbar Shrink Effect
+    const navbar = document.querySelector('.navbar');
+    if (navbar) {
+        if (window.scrollY > 50) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+    }
+    
+    // Back to Top Button Visibility
+    const backToTop = document.getElementById('backToTopBtn');
+    if (backToTop) {
+        if (window.scrollY > 400) {
+            backToTop.classList.add('visible');
+        } else {
+            backToTop.classList.remove('visible');
+        }
+    }
+});
+
+// Inject Back to Top Button globally
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.createElement('button');
+    btn.id = 'backToTopBtn';
+    btn.className = 'back-to-top';
+    btn.innerHTML = '↑';
+    btn.setAttribute('aria-label', 'Back to top');
+    btn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.body.appendChild(btn);
 });
 
 // Counter Animation

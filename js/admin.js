@@ -25,6 +25,23 @@ setInterval(() => {
     loadMessages();
 }, 30000);
 
+function showToast(title, message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-title">${title}</div>
+        <div class="toast-message">${message}</div>
+    `;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => { toast.remove(); }, 5000);
+}
+
+
 
 function downloadNOC(sid) {
   fetch(`${STUDENT_ADMIN}/noc/${sid}`, { headers })
@@ -453,20 +470,15 @@ if (galleryForm) {
             });
             const result = await res.json();
             if (result.success) {
-                msg.innerHTML = '<div style="color:#065f46;background:#d1fae5;padding:0.8rem;border-radius:5px">✅ Photo uploaded successfully!</div>';
+                showToast('✅ Success', 'Photo uploaded successfully!', 'success');
                 galleryForm.reset();
                 document.getElementById('imagePreview').style.display = 'none';
                 loadGalleryAdmin();
             } else {
-                msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${result.message}</div>`;
+                showToast('❌ Upload Error', result.message, 'error');
             }
-        } catch (error) {
-            msg.innerHTML = '<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ Upload failed. Try again.</div>';
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'Upload Photo';
-            setTimeout(() => msg.innerHTML = '', 5000);
-        }
+        } catch (error) { showToast('❌ Server Error', 'Upload failed. Please try again.', 'error'); } 
+        finally { btn.disabled = false; btn.textContent = 'Upload Photo'; }
     });
 }
 

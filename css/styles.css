@@ -63,6 +63,20 @@ body::after {
     justify-content: space-between;
     align-items: center;
     padding: 1rem 2rem;
+    transition: all 0.4s ease;
+}
+
+/* Dynamic Navbar Scroll Effect */
+.navbar.scrolled {
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+}
+.navbar.scrolled .nav-container {
+    padding: 0.5rem 2rem;
+}
+.navbar.scrolled .logo img {
+    height: 50px !important;
+    width: 50px !important;
 }
 
 /* Premium 3D Spatial Parallax Logo */
@@ -298,6 +312,24 @@ body::after {
     color: #fbbf24;
     transform: translateY(-3px);
 }
+
+/* Footer Contact Alignments */
+.footer-contact-item {
+    display: flex;
+    gap: 0.8rem;
+    margin-bottom: 0.8rem;
+    align-items: flex-start;
+}
+.footer-contact-item p {
+    margin: 0;
+    line-height: 1.5;
+    word-break: break-word;
+}
+.footer-contact-item span {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
 .social-links svg { width: 24px; height: 24px; fill: currentColor; }
 .footer-bottom {
     text-align: center;
@@ -513,8 +545,8 @@ blockquote {
 /* Responsive Navbar (Trigger earlier due to many menu items) */
 @media (max-width: 1050px) {
     .nav-menu {
-        position: fixed;
-        top: 103px;
+        position: absolute;
+        top: 100%;
         left: -100%;
         flex-direction: column;
         background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%), 
@@ -522,10 +554,10 @@ blockquote {
         background-size: cover;
         backdrop-filter: blur(10px);
         width: 100%;
-        height: calc(100vh - 103px);
+        height: 100vh;
         overflow-y: auto;
         text-align: center;
-        padding: 2rem 0;
+        padding: 2rem 0 150px 0; /* Extra padding ensures bottom links aren't cut off */
         transition: 0.3s;
         box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         gap: 1.5rem;
@@ -1065,11 +1097,14 @@ blockquote {
     .footer-bottom {
         flex-direction: column;
         text-align: center;
+        gap: 0.8rem;
     }
-    .footer-bottom > p,
+    .footer-bottom > p:first-child,
+    .footer-bottom > p:nth-child(2),
     .footer-bottom .staff-link {
         text-align: center;
         flex: none;
+        width: 100%;
     }
 }
    
@@ -1127,3 +1162,106 @@ blockquote {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
     border: 1px solid rgba(255, 255, 255, 0.3) !important;
 }
+
+/* ============ FLOATING WHATSAPP ICON ============ */
+.whatsapp-float {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background-color: #25d366;
+    color: #FFF;
+    border-radius: 50px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    animation: pulse-wa 2s infinite;
+}
+.whatsapp-float:hover {
+    transform: scale(1.1);
+    background-color: #128c7e;
+    color: #FFF;
+}
+.whatsapp-float svg { width: 35px; height: 35px; fill: currentColor; }
+@keyframes pulse-wa {
+    0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(37, 211, 102, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+}
+@media (max-width: 768px) {
+    .whatsapp-float { width: 50px; height: 50px; bottom: 20px; right: 20px; }
+    .whatsapp-float svg { width: 28px; height: 28px; }
+}
+
+/* ============ BACK TO TOP BUTTON ============ */
+.back-to-top {
+    position: fixed;
+    bottom: 100px; /* Sits beautifully above the WhatsApp icon */
+    right: 35px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    color: white;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.back-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+.back-to-top:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+}
+@media (max-width: 768px) {
+    .back-to-top { bottom: 80px; right: 22px; width: 40px; height: 40px; font-size: 1rem; }
+}
+
+/* ============ TOAST NOTIFICATIONS ============ */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    align-items: flex-end;
+}
+.toast {
+    background: white;
+    color: #334155;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border-left: 5px solid #6b7280;
+    min-width: 280px;
+    max-width: 350px;
+    opacity: 0;
+    transform: translateX(20px);
+    animation: slideInToast 0.5s forwards, fadeOutToast 0.5s 4.5s forwards;
+}
+.toast.toast-success { border-left-color: #10b981; }
+.toast.toast-error { border-left-color: #ef4444; }
+.toast.toast-info { border-left-color: #3b82f6; }
+.toast-title { font-weight: 700; margin-bottom: 0.3rem; }
+.toast-message { font-size: 0.9rem; }
+
+@keyframes slideInToast { to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeOutToast { from { opacity: 1; } to { opacity: 0; transform: translateX(20px); } }
