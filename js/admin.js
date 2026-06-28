@@ -1358,7 +1358,7 @@ function applyTabPermissions() {
             return;
         }
         if (tab === 'teacher-workspace') {
-            btn.style.display = (myRole !== 'superadmin' && (hasPermission('staff.attendance.approve') || hasPermission('staff.payroll.manage'))) ? '' : 'none';
+            btn.style.display = (myRole !== 'superadmin') ? '' : 'none';
             return;
         }
         const req = tabMap[tab];
