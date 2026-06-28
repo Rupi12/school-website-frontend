@@ -1079,7 +1079,8 @@ async function loadStudentData(sid) {
                 const totalFee = data.fees.reduce((s, f) => s + f.amount, 0);
                 const totalDiscount = data.fees.reduce((s, f) => s + (f.discount || 0), 0);
                 const totalPaidAll = data.fees.reduce((s, f) => s + f.payments.reduce((a, p) => a + p.amount, 0), 0);
-                const pendingAll = (totalFee - totalDiscount) - totalPaidAll;
+                const netPayable = totalFee - totalDiscount;
+                const pendingAll = Math.max(0, netPayable - totalPaidAll);
                 const allPaid = data.fees.length > 0 && pendingAll <= 0;
                 return `
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.6rem;
@@ -1087,12 +1088,11 @@ async function loadStudentData(sid) {
                     background:${allPaid ? '#ecfdf5' : '#fef2f2'};border:1px solid ${allPaid ? '#a7f3d0' : '#fecaca'}">
                     <div>
                         <div style="font-size:0.8rem;color:#6b7280;font-weight:600">${allPaid ? 'ALL FEES CLEARED' : 'TOTAL DUE'}</div>
-                        <div style="font-size:1.3rem;font-weight:800;color:${allPaid ? '#065f46' : '#991b1b'}">
-                            ${allPaid ? '₹0' : '₹' + pendingAll}
+                        <div style="font-size:1.3rem;font-weight:800;color:${allPaid ? '#065f46' : '#991b1b'}; margin-bottom: 0.3rem;">
+                            ${allPaid ? '₹0' : '₹' + pendingAll.toFixed(2)}
                         </div>
-                        <div style="color:#6b7280;font-size:0.85rem;margin-top:0.3rem">
-                            Total Fees: ₹${totalFee} ${totalDiscount > 0 ? `| Discount: -₹${totalDiscount} | Net: ₹${totalFee - totalDiscount}` : ''}<br>
-                            Paid: ₹${totalPaidAll}
+                        <div style="color:#6b7280;font-size:0.85rem;">
+                            Total Fees: ₹${totalFee} | Discount: -₹${totalDiscount} | Net: ₹${netPayable}<br>Paid: ₹${totalPaidAll}
                         </div>
                     </div>
                     <button type="button" onclick="downloadNOC('${sid}')"
@@ -1128,8 +1128,7 @@ async function loadStudentData(sid) {
                             <div style="font-size:0.85rem;color:#4b5563;">
                                 Total Fee: ₹${f.amount} 
                                 ${f.discount ? ` | <span style="color:#10b981;">Discount: -₹${f.discount}</span> | Net Fee: ₹${netAmount}` : ''}
-                                <br>Paid: ₹${totalPaid} | Pending: ₹${netAmount - totalPaid}
-                            </div>
+                                <br>Paid: ₹${totalPaid} | Pending: ₹${Math.max(0, netAmount - totalPaid)}                            </div>
                         </div>
                         <span style="display:flex;gap:0.3rem;flex-wrap:wrap;align-items:center">
                             ${hasPermission('fees.manage') ? `<button class="action-btn btn-view" onclick="editFee('${f._id}','${escapeHtml(f.feeType)}',${f.amount},${f.discount || 0},'${escapeHtml(f.discountReason || '')}','${escapeHtml(f.category)}','${escapeHtml(f.academicYear)}','${sid}')">✏️ Edit</button>` : ''}
@@ -1305,6 +1304,7 @@ const ALL_PERMISSIONS = [
     { key: 'students.add', label: 'Add Students', category: 'Student Management' },
     { key: 'students.edit', label: 'Edit/Promote Students', category: 'Student Management' },
     { key: 'students.delete', label: 'Delete Students', category: 'Student Management' },
+    { key: 'students.view.details', label: 'View Student Details (Fees, Results, etc.)', category: 'Student Management' },
     { key: 'students.export', label: 'Export Students', category: 'Student Management' },
     { key: 'results.manage', label: 'Manage Results', category: 'Student Management' },
     { key: 'fees.manage', label: 'Manage Fees', category: 'Student Management' },
@@ -1358,7 +1358,7 @@ function applyTabPermissions() {
             return;
         }
         if (tab === 'teacher-workspace') {
-            btn.style.display = (myRole !== 'superadmin') ? '' : 'none'; // Hide from Superadmins
+            btn.style.display = (myRole !== 'superadmin' && (hasPermission('staff.attendance.approve') || hasPermission('staff.payroll.manage'))) ? '' : 'none';
             return;
         }
         const req = tabMap[tab];
@@ -1381,8 +1381,8 @@ function applyStudentSectionPermissions() {
         'gallery': ['gallery.add', 'gallery.edit', 'gallery.delete'],
         'news': ['news.add', 'news.edit', 'news.delete'],
         'documents': ['documents.add', 'documents.delete'],
-        'students.list': ['students.view', 'students.add', 'students.edit', 'students.delete', 'students.export', 'results.manage', 'fees.manage', 'attendance.manage', 'timetable.manage', 'studentdocs.manage'],
-        'students.manage': ['students.add', 'students.edit', 'students.delete', 'results.manage', 'fees.manage', 'attendance.manage', 'timetable.manage', 'studentdocs.manage'],
+        'students.list': ['students.view'],
+        'students.manage': ['students.view.details', 'results.manage', 'fees.manage', 'attendance.manage', 'studentdocs.manage', 'students.edit', 'timetable.manage', 'students.delete'],
         'students.bulk': ['attendance.manage', 'fees.manage', 'students.edit'],
         'students.timetable': ['timetable.manage']
     };
@@ -1433,8 +1433,8 @@ async function loadAdmins() {
                     </div>
                     ${a.role !== 'superadmin' ? `
                         <div>
-                            <button class="action-btn btn-view" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit</button>
-                            <button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>
+                            ${(hasPermission('staff.edit.profile') || hasPermission('staff.edit.permissions') || hasPermission('staff.reset.password')) ? `<button class="action-btn btn-view" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit</button>` : ''}
+                            ${hasPermission('staff.delete') ? `<button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>` : ''}
                         </div>
                     ` : ''}
                 </div>
@@ -2278,7 +2278,7 @@ function onSelectionChange() {
             ${hasPermission('attendance.manage') ? `<button class="sd-mini-btn" onclick="showManage('attendance')">📅 Attendance</button>` : ''}
             ${hasPermission('fees.manage') ? `<button class="sd-mini-btn" onclick="showManage('fee')">💰 Add Fee</button>` : ''}
             ${hasPermission('studentdocs.manage') ? `<button class="sd-mini-btn" onclick="showManage('doc')">📄 Upload Doc</button>` : ''}
-            <button class="sd-mini-btn" onclick="showManage('view')">👁️ View/Delete Data</button>
+            ${hasPermission('students.view.details') ? `<button class="sd-mini-btn" onclick="showManage('view')">👁️ View/Delete Data</button>` : ''}
         `;
     } else {
         // Bulk actions only
