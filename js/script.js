@@ -162,15 +162,50 @@ const observer = new IntersectionObserver((entries) => {
 
 counters.forEach(counter => observer.observe(counter));
 
+// Shared client-side validation for the admission/contact forms below — HTML5
+// `required` alone lets whitespace-only input through and does no format checking
+// (e.g. a phone field accepts "abc"), so real submissions were reaching the backend
+// with garbage in required fields.
+function validateAdmissionData(data) {
+    if (!(data.studentName || '').trim()) return "Please enter the student's full name.";
+    if (!data.grade) return 'Please select the grade being applied for.';
+    if (!(data.parentName || '').trim()) return "Please enter the parent/guardian's name.";
+    if (!/^\d{10}$/.test((data.phone || '').trim())) return 'Please enter a valid 10-digit phone number.';
+    if (!(data.address || '').trim()) return 'Please enter the full address.';
+    return null;
+}
+
+function validateContactData(data) {
+    if (!(data.name || '').trim()) return 'Please enter your name.';
+    if (!/^\d{10}$/.test((data.phone || '').trim())) return 'Please enter a valid 10-digit phone number.';
+    if (!(data.subject || '').trim()) return 'Please enter a subject.';
+    if (!(data.message || '').trim()) return 'Please enter your message.';
+    return null;
+}
+
+function trimAllFields(data) {
+    const trimmed = {};
+    Object.keys(data).forEach(k => { trimmed[k] = typeof data[k] === 'string' ? data[k].trim() : data[k]; });
+    return trimmed;
+}
+
 // Admission Form - Now connects to backend!
 const admissionForm = document.getElementById('admissionForm');
 if (admissionForm) {
     admissionForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(admissionForm);
-        const data = Object.fromEntries(formData);
+        const data = trimAllFields(Object.fromEntries(formData));
         const msg = document.getElementById('formMessage');
-        
+
+        const validationError = validateAdmissionData(data);
+        if (validationError) {
+            msg.className = 'form-message error';
+            msg.style.display = 'block';
+            msg.textContent = '❌ ' + validationError;
+            return;
+        }
+
         // Show loading
         const submitBtn = admissionForm.querySelector('button[type="submit"]');
         const originalText = submitBtn.textContent;
@@ -238,9 +273,17 @@ if (popupAdmissionForm) {
     popupAdmissionForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(popupAdmissionForm);
-        const data = Object.fromEntries(formData);
+        const data = trimAllFields(Object.fromEntries(formData));
         const msg = document.getElementById('popupFormMessage');
-        
+
+        const validationError = validateAdmissionData(data);
+        if (validationError) {
+            msg.style.display = 'block';
+            msg.style.background = '#fee2e2'; msg.style.color = '#991b1b';
+            msg.textContent = '❌ ' + validationError;
+            return;
+        }
+
         const submitBtn = popupAdmissionForm.querySelector('button[type="submit"]');
         const originalText = submitBtn.textContent;
         submitBtn.disabled = true;
@@ -280,9 +323,17 @@ if (contactForm) {
     contactForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(contactForm);
-        const data = Object.fromEntries(formData);
+        const data = trimAllFields(Object.fromEntries(formData));
         const msg = document.getElementById('contactMessage');
-        
+
+        const validationError = validateContactData(data);
+        if (validationError) {
+            msg.className = 'form-message error';
+            msg.style.display = 'block';
+            msg.textContent = '❌ ' + validationError;
+            return;
+        }
+
         const submitBtn = contactForm.querySelector('button[type="submit"]');
         const originalText = submitBtn.textContent;
         submitBtn.disabled = true;

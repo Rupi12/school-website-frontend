@@ -6,7 +6,12 @@ const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
 
 if (!token) window.location.href = 'login.html';
 
-document.getElementById('adminName').textContent = `👤 ${adminInfo.username || 'Admin'}`;
+const adminNameEl = document.getElementById('adminName');
+if (adminNameEl) {
+    adminNameEl.innerHTML = `👤 ${adminInfo.username || 'Admin'} <span style="font-size:0.7em; vertical-align: middle;">▼</span>`;
+    adminNameEl.style.cursor = 'pointer';
+    adminNameEl.onclick = openAdminProfileModal;
+}
 
 const headers = {
     'Content-Type': 'application/json',
@@ -39,6 +44,34 @@ function showToast(title, message, type = 'info') {
     container.appendChild(toast);
     
     setTimeout(() => { toast.remove(); }, 5000);
+}
+
+async function openAdminProfileModal() {
+    const modal = document.getElementById('adminProfileModal');
+    const body = document.getElementById('adminProfileBody');
+    if (!modal || !body) return;
+
+    modal.classList.add('active');
+    body.innerHTML = '<div class="spinner-container"><div class="spinner"></div></div>';
+
+    try {
+        const res = await fetch(`${API_URL}/auth/me`, { headers });
+        if (!res.ok) throw new Error('Failed to fetch profile');
+        const { admin } = await res.json();
+
+        body.innerHTML = `
+            <div class="detail-row"><strong>Full Name:</strong> ${escapeHtml(admin.realName || admin.username)}</div>
+            <div class="detail-row"><strong>Employee ID:</strong> ${escapeHtml(admin.employeeId || 'N/A')}</div>
+            <div class="detail-row"><strong>Username:</strong> ${escapeHtml(admin.username)}</div>
+            <div class="detail-row"><strong>Email:</strong> ${escapeHtml(admin.email)}</div>
+            <div class="detail-row"><strong>Phone:</strong> ${escapeHtml(admin.phone || 'N/A')}</div>
+            <div class="detail-row"><strong>Role:</strong> <span class="status-select status-approved" style="text-transform: capitalize;">${escapeHtml(admin.role)}</span></div>
+            <div class="detail-row"><strong>Joined On:</strong> ${admin.joiningDate ? new Date(admin.joiningDate).toLocaleDateString() : 'N/A'}</div>
+            <div class="detail-row"><strong>Qualifications:</strong> ${escapeHtml(admin.qualifications || 'N/A')}</div>
+        `;
+    } catch (e) {
+        body.innerHTML = `<p style="color: #ef4444;">Could not load profile details. Please try again.</p>`;
+    }
 }
 
 
@@ -274,16 +307,19 @@ function showTab(tab, btn) {
     document.getElementById('gallery-tab').classList.toggle('hidden', tab !== 'gallery');
     document.getElementById('news-tab').classList.toggle('hidden', tab !== 'news');
     document.getElementById('documents-tab').classList.toggle('hidden', tab !== 'documents');
+    document.getElementById('homepage-tab')?.classList.toggle('hidden', tab !== 'homepage');
     document.getElementById('students-tab').classList.toggle('hidden', tab !== 'students');
     document.getElementById('admins-tab').classList.toggle('hidden', tab !== 'admins');
     document.getElementById('audit-tab')?.classList.toggle('hidden', tab !== 'audit');
-    document.getElementById('report-tab')?.classList.toggle('hidden', tab !== 'report');
+    document.getElementById('fees-management-tab')?.classList.toggle('hidden', tab !== 'fees-management');
     document.getElementById('teacher-workspace-tab')?.classList.toggle('hidden', tab !== 'teacher-workspace');
-    
-    // in if-chain:
-   if (tab === 'report') { loadReport(); loadPendingSummary(); loadDefaulters(); loadDefaulterClasses(); }
-        
-    
+
+    if (tab === 'fees-management') {
+        initFeesManagement();
+        const firstVisibleFmTab = [...document.querySelectorAll('.fm-sub-tab-btn')][0];
+        if (firstVisibleFmTab) firstVisibleFmTab.click();
+    }
+
     if (tab === 'audit') loadAudit(1);
     if (tab === 'students') { 
         loadStudentsAdmin(); loadClasses(); 
@@ -291,6 +327,7 @@ function showTab(tab, btn) {
         if (firstVisibleStudentTab) firstVisibleStudentTab.click();
     }
     if (tab === 'documents') loadDocsAdmin();
+    if (tab === 'homepage') loadHomepageSettings();
     if (tab === 'gallery') loadGalleryAdmin();
     if (tab === 'news') loadNewsAdmin();
     if (tab === 'admins') {
@@ -683,6 +720,370 @@ async function deleteDoc(id) {
     } catch (error) { console.error(error); }
 }
 
+// ============ HOMEPAGE CONTENT ============
+// Repeatable-row editors (add/remove/reorder buttons) instead of the old
+// pipe-delimited textareas ("1|Ananya Gupta|98.6%|Class 12") — admins no longer
+// hand-type delimiters or renumber ranks after inserting a row.
+
+// Collapse/expand per section — the form grew to 6 list-editors long, so each
+// section can be tucked away once an admin isn't actively working on it.
+function toggleHpSection(key) {
+    const content = document.getElementById(`hp-content-${key}`);
+    const chevron = document.getElementById(`hp-chevron-${key}`);
+    if (!content) return;
+    const isHidden = content.style.display === 'none';
+    content.style.display = isHidden ? '' : 'none';
+    if (chevron) chevron.textContent = isHidden ? '▾' : '▸';
+}
+
+let resultTrendData = [];
+let toppersData = [];
+let testimonialsData = [];
+let facilitiesData = [];
+
+function escapeAttr(v) {
+    return String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+function rowCard(innerHtml) {
+    return `<div style="display:flex;gap:0.6rem;align-items:flex-start;background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:0.6rem 0.8rem">${innerHtml}</div>`;
+}
+
+function reorderControls(idx, len, moveFn, removeFn) {
+    return `
+        <div style="display:flex;flex-direction:column;gap:2px">
+            <button type="button" onclick="${moveFn}(${idx},-1)" ${idx === 0 ? 'disabled' : ''} title="Move up" style="border:none;background:none;cursor:${idx === 0 ? 'default' : 'pointer'};opacity:${idx === 0 ? 0.3 : 1};padding:0;font-size:0.9rem;line-height:1">▲</button>
+            <button type="button" onclick="${moveFn}(${idx},1)" ${idx === len - 1 ? 'disabled' : ''} title="Move down" style="border:none;background:none;cursor:${idx === len - 1 ? 'default' : 'pointer'};opacity:${idx === len - 1 ? 0.3 : 1};padding:0;font-size:0.9rem;line-height:1">▼</button>
+        </div>
+        <button type="button" onclick="${removeFn}(${idx})" title="Remove" style="border:none;background:none;color:#ef4444;cursor:pointer;font-size:1.1rem;padding:0 0.3rem;line-height:1">✕</button>
+    `;
+}
+
+function smallInput(value, placeholder, onInput, extraStyle = '') {
+    return `<input type="text" value="${escapeAttr(value)}" placeholder="${placeholder}" oninput="${onInput}" style="padding:0.5rem;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;width:100%;${extraStyle}">`;
+}
+
+// --- Result Trend ---
+function renderResultTrendRows() {
+    const el = document.getElementById('resultTrendRows');
+    if (!el) return;
+    el.innerHTML = resultTrendData.length
+        ? resultTrendData.map((r, i) => rowCard(`
+            <div style="width:100px">${smallInput(r.year, 'Year', `updateResultTrend(${i},'year',this.value)`)}</div>
+            <div style="width:100px">${smallInput(r.pct, 'Percent', `updateResultTrend(${i},'pct',this.value)`)}</div>
+            <div style="flex:1"></div>
+            ${reorderControls(i, resultTrendData.length, 'moveResultTrend', 'removeResultTrend')}
+        `)).join('')
+        : `<p style="color:#94a3b8;font-size:0.85rem;margin:0">No years added yet — click "+ Add Year".</p>`;
+}
+function addResultTrendRow() { resultTrendData.push({ year: '', pct: '' }); renderResultTrendRows(); }
+function removeResultTrend(i) { resultTrendData.splice(i, 1); renderResultTrendRows(); }
+function moveResultTrend(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= resultTrendData.length) return;
+    [resultTrendData[i], resultTrendData[j]] = [resultTrendData[j], resultTrendData[i]];
+    renderResultTrendRows();
+}
+function updateResultTrend(i, field, value) { resultTrendData[i][field] = value; }
+
+// --- Toppers ---
+function renderToppersRows() {
+    const el = document.getElementById('toppersRows');
+    if (!el) return;
+    el.innerHTML = toppersData.length
+        ? toppersData.map((t, i) => rowCard(`
+            <div style="width:32px;text-align:center;font-weight:700;color:#2563eb;padding-top:0.55rem">#${i + 1}</div>
+            <div style="flex:2">${smallInput(t.name, 'Student name', `updateTopper(${i},'name',this.value)`)}</div>
+            <div style="width:110px">${smallInput(t.marks, 'e.g. 98.6%', `updateTopper(${i},'marks',this.value)`)}</div>
+            <div style="width:110px">${smallInput(t.cls, 'e.g. Class 12', `updateTopper(${i},'cls',this.value)`)}</div>
+            ${reorderControls(i, toppersData.length, 'moveTopper', 'removeTopper')}
+        `)).join('')
+        : `<p style="color:#94a3b8;font-size:0.85rem;margin:0">No toppers added yet — click "+ Add Topper".</p>`;
+}
+function addTopperRow() { toppersData.push({ name: '', marks: '', cls: '' }); renderToppersRows(); }
+function removeTopper(i) { toppersData.splice(i, 1); renderToppersRows(); }
+function moveTopper(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= toppersData.length) return;
+    [toppersData[i], toppersData[j]] = [toppersData[j], toppersData[i]];
+    renderToppersRows();
+}
+function updateTopper(i, field, value) { toppersData[i][field] = value; }
+
+// --- Testimonials ---
+const RATING_OPTIONS = [5, 4, 3, 2, 1];
+function renderTestimonialsRows() {
+    const el = document.getElementById('testimonialsRows');
+    if (!el) return;
+    el.innerHTML = testimonialsData.length
+        ? testimonialsData.map((t, i) => rowCard(`
+            <div style="flex:1;display:grid;gap:0.4rem">
+                <div style="display:flex;gap:0.6rem">
+                    <div style="flex:1">${smallInput(t.name, 'Parent/student name', `updateTestimonial(${i},'name',this.value)`)}</div>
+                    <div style="flex:1">${smallInput(t.role, 'e.g. Parent, Class 8', `updateTestimonial(${i},'role',this.value)`)}</div>
+                    <div style="width:130px">
+                        <select onchange="updateTestimonial(${i},'rating',this.value)" style="width:100%;padding:0.5rem;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem">
+                            ${RATING_OPTIONS.map(n => `<option value="${n}" ${Number(t.rating) === n ? 'selected' : ''}>${'★'.repeat(n)}${'☆'.repeat(5 - n)}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                <textarea placeholder="Testimonial quote" oninput="updateTestimonial(${i},'quote',this.value)" rows="2" style="width:100%;padding:0.5rem;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;font-family:inherit">${escapeAttr(t.quote)}</textarea>
+            </div>
+            ${reorderControls(i, testimonialsData.length, 'moveTestimonial', 'removeTestimonial')}
+        `)).join('')
+        : `<p style="color:#94a3b8;font-size:0.85rem;margin:0">No testimonials added yet — click "+ Add Testimonial".</p>`;
+}
+function addTestimonialRow() { testimonialsData.push({ name: '', role: '', rating: 5, quote: '' }); renderTestimonialsRows(); }
+function removeTestimonial(i) { testimonialsData.splice(i, 1); renderTestimonialsRows(); }
+function moveTestimonial(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= testimonialsData.length) return;
+    [testimonialsData[i], testimonialsData[j]] = [testimonialsData[j], testimonialsData[i]];
+    renderTestimonialsRows();
+}
+function updateTestimonial(i, field, value) { testimonialsData[i][field] = value; }
+
+// --- Facilities ---
+// The app renders this value directly as an emoji character (not a
+// MaterialCommunityIcons name) — value and label are the same glyph, label just
+// adds a description so admins know what each one means in the dropdown.
+const FACILITY_ICON_OPTIONS = [
+    { value: '💻', label: '💻 Smart Classroom' },
+    { value: '🧪', label: '🧪 Science Lab' },
+    { value: '🔬', label: '🔬 Biology Lab' },
+    { value: '🖥️', label: '🖥️ Computer Lab' },
+    { value: '📚', label: '📚 Library' },
+    { value: '📖', label: '📖 Reading Room' },
+    { value: '🏀', label: '🏀 Sports Complex' },
+    { value: '⚽', label: '⚽ Playground' },
+    { value: '🏋️', label: '🏋️ Gym' },
+    { value: '🏊', label: '🏊 Swimming Pool' },
+    { value: '🎵', label: '🎵 Music Room' },
+    { value: '🎨', label: '🎨 Art Room' },
+    { value: '🎭', label: '🎭 Auditorium' },
+    { value: '🚌', label: '🚌 Transport' },
+    { value: '📷', label: '📷 Security / CCTV' },
+    { value: '🛡️', label: '🛡️ Secure Campus' },
+    { value: '⛑️', label: '⛑️ Medical Room' },
+    { value: '📶', label: '📶 Wi-Fi Campus' },
+    { value: '🍽️', label: '🍽️ Cafeteria' },
+    { value: '🛏️', label: '🛏️ Hostel' },
+];
+
+function renderFacilitiesRows() {
+    const el = document.getElementById('facilitiesRows');
+    if (!el) return;
+    el.innerHTML = facilitiesData.length
+        ? facilitiesData.map((f, i) => rowCard(`
+            <div style="width:190px">
+                <select onchange="updateFacility(${i},'icon',this.value)" style="width:100%;padding:0.5rem;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem">
+                    <option value="">No icon</option>
+                    ${FACILITY_ICON_OPTIONS.map(o => `<option value="${o.value}" ${f.icon === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+                </select>
+            </div>
+            <div style="flex:1">${smallInput(f.title, 'Facility title', `updateFacility(${i},'title',this.value)`)}</div>
+            ${reorderControls(i, facilitiesData.length, 'moveFacility', 'removeFacility')}
+        `)).join('')
+        : `<p style="color:#94a3b8;font-size:0.85rem;margin:0">No facilities added yet — click "+ Add Facility".</p>`;
+}
+function addFacilityRow() { facilitiesData.push({ icon: '', title: '' }); renderFacilitiesRows(); }
+function removeFacility(i) { facilitiesData.splice(i, 1); renderFacilitiesRows(); }
+function moveFacility(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= facilitiesData.length) return;
+    [facilitiesData[i], facilitiesData[j]] = [facilitiesData[j], facilitiesData[i]];
+    renderFacilitiesRows();
+}
+function updateFacility(i, field, value) { facilitiesData[i][field] = value; }
+
+// --- Awards & Recognitions ---
+// Icon is a fixed curated list (not free text) — every value here is verified to
+// exist in MaterialCommunityIcons, so there's no way to save a typo'd name that
+// silently renders nothing in the app.
+const AWARD_ICON_OPTIONS = [
+    { value: 'trophy-award', label: '🏆 Trophy' },
+    { value: 'trophy-variant', label: '🏆 Trophy (variant)' },
+    { value: 'medal', label: '🏅 Medal' },
+    { value: 'medal-outline', label: '🏅 Medal (outline)' },
+    { value: 'certificate', label: '📜 Certificate' },
+    { value: 'star-circle', label: '⭐ Star' },
+    { value: 'shield-check', label: '🛡️ Shield / Affiliation' },
+    { value: 'shield-star', label: '🛡️ Shield with star' },
+    { value: 'crown', label: '👑 Crown' },
+    { value: 'school', label: '🏫 School' },
+    { value: 'book-open-variant', label: '📖 Book' },
+    { value: 'seal', label: '🔖 Seal' },
+    { value: 'ribbon', label: '🎗️ Ribbon' },
+    { value: 'cctv', label: '📷 Security / CCTV' },
+    { value: 'bus-school', label: '🚌 Transport' },
+];
+
+let awardsData = [];
+function renderAwardsRows() {
+    const el = document.getElementById('awardsRows');
+    if (!el) return;
+    el.innerHTML = awardsData.length
+        ? awardsData.map((a, i) => rowCard(`
+            <div style="flex:1;display:grid;gap:0.5rem">
+                <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+                    <div style="width:190px">
+                        <select onchange="updateAward(${i},'icon',this.value)" style="width:100%;padding:0.5rem;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem">
+                            <option value="">No icon</option>
+                            ${AWARD_ICON_OPTIONS.map(o => `<option value="${o.value}" ${a.icon === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="flex:1;min-width:160px">${smallInput(a.title, 'Award title *', `updateAward(${i},'title',this.value)`)}</div>
+                    <div style="width:100px">${smallInput(a.year, 'Year', `updateAward(${i},'year',this.value)`)}</div>
+                </div>
+                <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap">
+                    <button type="button" onclick="document.getElementById('awardImgInput${i}').click()" style="background:#eef2ff;color:#3b82f6;border:none;padding:0.5rem 0.9rem;border-radius:6px;font-size:0.85rem;cursor:pointer">🖼️ ${a.image ? 'Change image' : 'Upload image'}</button>
+                    <input type="file" id="awardImgInput${i}" accept="image/*" style="display:none" onchange="uploadAwardImage(${i}, this.files[0])">
+                    ${a.image ? `<img src="${escapeAttr(a.image)}" style="height:36px;border-radius:6px;object-fit:cover"> <button type="button" onclick="updateAward(${i},'image','');renderAwardsRows()" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:0.8rem">Remove image</button>` : `<span style="color:#9ca3af;font-size:0.8rem">No image — icon badge will be shown instead</span>`}
+                    <span id="awardUploadStatus${i}" style="font-size:0.8rem;color:#6b7280"></span>
+                </div>
+                <textarea placeholder="Short description (optional)" oninput="updateAward(${i},'description',this.value)" rows="2" style="width:100%;padding:0.5rem;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;font-family:inherit">${escapeAttr(a.description)}</textarea>
+                <textarea placeholder="Highlights — one per line (optional)" oninput="updateAward(${i},'highlights',this.value)" rows="2" style="width:100%;padding:0.5rem;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;font-family:inherit">${escapeAttr((a.highlights || []).join('\n'))}</textarea>
+            </div>
+            ${reorderControls(i, awardsData.length, 'moveAward', 'removeAward')}
+        `)).join('')
+        : `<p style="color:#94a3b8;font-size:0.85rem;margin:0">No awards added yet — click "+ Add Award".</p>`;
+}
+function addAwardRow() { awardsData.push({ icon: '', image: '', title: '', description: '', highlights: [], year: '' }); renderAwardsRows(); }
+function removeAward(i) { awardsData.splice(i, 1); renderAwardsRows(); }
+function moveAward(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= awardsData.length) return;
+    [awardsData[i], awardsData[j]] = [awardsData[j], awardsData[i]];
+    renderAwardsRows();
+}
+// `highlights` is edited as raw newline-delimited text in the textarea (matching
+// updateAward's generic string-field contract) and only split into an array at
+// save time in the submit handler — keeps this function uniform for every field.
+function updateAward(i, field, value) { awardsData[i][field] = value; }
+
+async function uploadAwardImage(i, file) {
+    if (!file) return;
+    const statusEl = document.getElementById(`awardUploadStatus${i}`);
+    if (statusEl) statusEl.textContent = 'Uploading...';
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+        const res = await fetch(`${API_URL}/homepage-settings/upload-image`, {
+            method: 'POST',
+            headers: { Authorization: headers.Authorization },
+            body: formData,
+        });
+        const data = await res.json();
+        if (data.success) {
+            awardsData[i].image = data.url;
+            renderAwardsRows();
+        } else if (statusEl) {
+            statusEl.textContent = '❌ ' + (data.message || 'Upload failed');
+        }
+    } catch (error) {
+        if (statusEl) statusEl.textContent = '❌ Upload failed';
+    }
+}
+
+async function loadHomepageSettings() {
+    const form = document.getElementById('homepageForm');
+    if (!form) return;
+    try {
+        const res = await fetch(`${API_URL}/homepage-settings`);
+        const data = await res.json();
+        if (!data.success) return;
+        const s = data.settings;
+        form.boardResultPercent.value = s.boardResultPercent ?? '';
+        form.studentCount.value = s.studentCount ?? '';
+        form.facultyCount.value = s.facultyCount ?? '';
+        form.yearsOfExcellence.value = s.yearsOfExcellence ?? '';
+        form.seatsTotal.value = s.seatsTotal ?? '';
+        form.seatsFilled.value = s.seatsFilled ?? '';
+        resultTrendData = (s.resultTrend || []).map(r => ({ year: r.year, pct: r.pct }));
+        toppersData = (s.toppers || []).map(t => ({ name: t.name, marks: t.marks, cls: t.cls }));
+        testimonialsData = (s.testimonials || []).map(t => ({ name: t.name, role: t.role, rating: t.rating, quote: t.quote }));
+        facilitiesData = (s.facilities || []).map(f => ({ icon: f.icon, title: f.title }));
+        awardsData = (s.awards || []).map(a => ({
+            icon: a.icon || '', image: a.image || '', title: a.title || '',
+            description: a.description || '', highlights: a.highlights || [], year: a.year || '',
+        }));
+        renderResultTrendRows();
+        renderToppersRows();
+        renderTestimonialsRows();
+        renderFacilitiesRows();
+        renderAwardsRows();
+    } catch (error) { console.error(error); }
+}
+
+const homepageForm = document.getElementById('homepageForm');
+if (homepageForm) {
+    homepageForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('homepageMsg');
+        const btn = homepageForm.querySelector('button[type="submit"]');
+
+        // Validate before saving — catches empty/malformed rows here instead of
+        // silently sending broken data to the app, which the old free-text format couldn't do at all.
+        const errors = [];
+        if (Number(homepageForm.seatsFilled.value) > Number(homepageForm.seatsTotal.value)) {
+            errors.push('Seats Filled cannot exceed Total Seats.');
+        }
+        resultTrendData.forEach((r, i) => {
+            if (!/^\d{4}$/.test(String(r.year).trim())) errors.push(`Result Trend row ${i + 1}: year must be a 4-digit number.`);
+            if (r.pct === '' || isNaN(Number(r.pct))) errors.push(`Result Trend row ${i + 1}: percent must be a number.`);
+        });
+        toppersData.forEach((t, i) => {
+            if (!t.name.trim()) errors.push(`Topper row ${i + 1}: name is required.`);
+        });
+        testimonialsData.forEach((t, i) => {
+            if (!t.name.trim() || !t.quote.trim()) errors.push(`Testimonial row ${i + 1}: name and quote are required.`);
+        });
+        facilitiesData.forEach((f, i) => {
+            if (!f.icon.trim() || !f.title.trim()) errors.push(`Facility row ${i + 1}: icon name and title are required.`);
+        });
+        awardsData.forEach((a, i) => {
+            if (!a.icon.trim() || !a.title.trim()) errors.push(`Award row ${i + 1}: icon name and title are required.`);
+        });
+        if (errors.length) {
+            msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${errors.join('<br>')}</div>`;
+            return;
+        }
+
+        btn.disabled = true;
+        const payload = {
+            boardResultPercent: Number(homepageForm.boardResultPercent.value) || 0,
+            studentCount: Number(homepageForm.studentCount.value) || 0,
+            facultyCount: Number(homepageForm.facultyCount.value) || 0,
+            yearsOfExcellence: Number(homepageForm.yearsOfExcellence.value) || 0,
+            seatsTotal: Number(homepageForm.seatsTotal.value) || 0,
+            seatsFilled: Number(homepageForm.seatsFilled.value) || 0,
+            resultTrend: resultTrendData.map(r => ({ year: String(r.year).trim(), pct: Number(r.pct) || 0 })),
+            toppers: toppersData.map((t, i) => ({ rank: i + 1, name: t.name.trim(), marks: t.marks.trim(), cls: t.cls.trim() })),
+            testimonials: testimonialsData.map(t => ({ name: t.name.trim(), role: t.role.trim(), rating: Number(t.rating) || 5, quote: t.quote.trim() })),
+            facilities: facilitiesData.map(f => ({ icon: f.icon.trim(), title: f.title.trim() })),
+            awards: awardsData.map(a => ({ icon: a.icon.trim(), title: a.title.trim() })),
+        };
+        try {
+            const res = await fetch(`${API_URL}/homepage-settings`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(payload)
+            });
+            const result = await res.json();
+            if (result.success) {
+                msg.innerHTML = '<div style="color:#065f46;background:#d1fae5;padding:0.8rem;border-radius:5px">✅ Saved! The app &amp; website will show this immediately.</div>';
+            } else {
+                msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${result.message}</div>`;
+            }
+        } catch (error) {
+            msg.innerHTML = '<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ Failed</div>';
+        } finally {
+            btn.disabled = false;
+            setTimeout(() => msg.innerHTML = '', 5000);
+        }
+    });
+}
+
 // ============ STUDENTS ============
 const STUDENT_ADMIN = `${API_URL}/student-admin`;
 let allStudents = [];
@@ -757,6 +1158,7 @@ if (studentForm) {
                 loadStudentsAdmin();
                 loadClasses();
                 loadBulkClasses();
+                refreshKnownClasses(); // new class value may have been typed in — keep the class-access checklist current
             } else {
                 msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${result.message}</div>`;
             }
@@ -1286,42 +1688,90 @@ async function saveTimetable() {
 
 // ============ PERMISSIONS ============
 const ALL_PERMISSIONS = [
-    { key: 'applications.view', label: 'View Applications', category: 'Applications' },
-    { key: 'applications.edit', label: 'Edit App Status', category: 'Applications' },
+    { key: 'applications.view', label: 'View Admission Applications', category: 'Applications' },
+    { key: 'applications.edit', label: 'Approve/Reject Applications', category: 'Applications' },
     { key: 'applications.delete', label: 'Delete Applications', category: 'Applications' },
-    { key: 'applications.export', label: 'Export Applications', category: 'Applications' },
-    { key: 'messages.view', label: 'View Messages', category: 'Messages' },
-    { key: 'messages.delete', label: 'Delete Messages', category: 'Messages' },
-    { key: 'gallery.add', label: 'Add Photos', category: 'Gallery' },
-    { key: 'gallery.edit', label: 'Edit Photos', category: 'Gallery' },
-    { key: 'gallery.delete', label: 'Delete Photos', category: 'Gallery' },
-    { key: 'news.add', label: 'Add News', category: 'News & Events' },
-    { key: 'news.edit', label: 'Edit News', category: 'News & Events' },
-    { key: 'news.delete', label: 'Delete News', category: 'News & Events' },
-    { key: 'documents.add', label: 'Upload Public Docs', category: 'Public Documents' },
-    { key: 'documents.delete', label: 'Delete Public Docs', category: 'Public Documents' },
-    { key: 'students.view', label: 'View Students', category: 'Student Management' },
-    { key: 'students.add', label: 'Add Students', category: 'Student Management' },
-    { key: 'students.edit', label: 'Edit/Promote Students', category: 'Student Management' },
-    { key: 'students.delete', label: 'Delete Students', category: 'Student Management' },
-    { key: 'students.view.details', label: 'View Student Details (Fees, Results, etc.)', category: 'Student Management' },
-    { key: 'students.export', label: 'Export Students', category: 'Student Management' },
-    { key: 'results.manage', label: 'Manage Results', category: 'Student Management' },
-    { key: 'fees.manage', label: 'Manage Fees', category: 'Student Management' },
-    { key: 'attendance.manage', label: 'Manage Attendance', category: 'Student Management' },
-    { key: 'timetable.manage', label: 'Manage Timetable', category: 'Student Management' },
-    { key: 'studentdocs.manage', label: 'Manage Student Docs', category: 'Student Management' },
-    { key: 'reports.view', label: 'View Finance Reports', category: 'Reports & Logs' },
-    { key: 'audit.view', label: 'View Audit Logs', category: 'Reports & Logs' },
+    { key: 'applications.export', label: 'Export Applications (CSV)', category: 'Applications' },
+    { key: 'messages.view', label: 'View Contact Messages', category: 'Messages' },
+    { key: 'messages.delete', label: 'Delete Contact Messages', category: 'Messages' },
+    { key: 'gallery.add', label: 'Upload Gallery Photos', category: 'Gallery' },
+    { key: 'gallery.edit', label: 'Edit Gallery Photos', category: 'Gallery' },
+    { key: 'gallery.delete', label: 'Delete Gallery Photos', category: 'Gallery' },
+    { key: 'news.add', label: 'Post News & Announcements', category: 'News & Events' },
+    { key: 'news.edit', label: 'Edit News & Announcements', category: 'News & Events' },
+    { key: 'news.delete', label: 'Delete News & Announcements', category: 'News & Events' },
+    { key: 'documents.add', label: 'Upload Public Website Documents', category: 'Public Documents' },
+    { key: 'documents.delete', label: 'Delete Public Website Documents', category: 'Public Documents' },
+    { key: 'homepage.edit', label: 'Edit Homepage/App Content (Stats, Toppers, Testimonials)', category: 'Homepage Content' },
+    { key: 'students.view', label: 'View Student List (Name, Roll, Class only)', category: 'Student Management' },
+    { key: 'students.add', label: 'Add New Students', category: 'Student Management' },
+    { key: 'students.edit', label: 'Edit Student Info & Promote to Next Class', category: 'Student Management' },
+    { key: 'students.delete', label: 'Delete Student Records', category: 'Student Management' },
+    { key: 'students.view.details', label: 'View All Student Data (Fees, Results, Attendance, Docs) — Read Only', category: 'Student Management' },
+    { key: 'students.export', label: 'Export Student List (CSV)', category: 'Student Management' },
+    { key: 'results.manage', label: 'Add/Edit Student Exam Results', category: 'Student Management' },
+    { key: 'fees.manage', label: 'Add/Edit/Collect Student Fees', category: 'Student Management' },
+    { key: 'attendance.manage', label: 'Mark/Edit Student Attendance', category: 'Student Management' },
+    { key: 'timetable.manage', label: 'Set Class Timetables', category: 'Student Management' },
+    { key: 'studentdocs.manage', label: 'Upload/Manage Student Documents', category: 'Student Management' },
+    { key: 'reports.view', label: 'View Fee Collection & Pending Dues Reports', category: 'Reports & Logs' },
+    { key: 'audit.view', label: 'View Activity Log (Who Did What, When)', category: 'Reports & Logs' },
     { key: 'staff.view', label: 'View Staff Directory', category: 'Staff Management' },
-    { key: 'staff.create', label: 'Create Staff', category: 'Staff Management' },
-    { key: 'staff.edit.profile', label: 'Edit Staff Profile', category: 'Staff Management' },
-    { key: 'staff.edit.permissions', label: 'Edit Staff Permissions', category: 'Staff Management' },
-    { key: 'staff.reset.password', label: 'Reset Staff Password', category: 'Staff Management' },
-    { key: 'staff.delete', label: 'Delete Staff', category: 'Staff Management' },
-    { key: 'staff.payroll.manage', label: 'Manage Staff Payroll', category: 'Staff Management' },
-    { key: 'staff.attendance.approve', label: 'Approve Staff Attendance', category: 'Staff Management' }
+    { key: 'staff.create', label: 'Create New Staff Accounts', category: 'Staff Management' },
+    { key: 'staff.edit.profile', label: "Edit Other Staff's Profile Info", category: 'Staff Management' },
+    { key: 'staff.edit.permissions', label: "Edit Other Staff's Permissions & Class Access", category: 'Staff Management' },
+    { key: 'staff.reset.password', label: "Reset Other Staff's Password", category: 'Staff Management' },
+    { key: 'staff.delete', label: 'Delete Staff Accounts', category: 'Staff Management' },
+    { key: 'staff.payroll.manage', label: 'Generate & Manage Staff Salary Slips', category: 'Staff Management' },
+    { key: 'staff.attendance.approve', label: 'Approve/Reject Staff Attendance Requests', category: 'Staff Management' }
 ];
+
+// Permissions that require per-class access to be useful — used to warn on the
+// staff list when an admin has one of these but no classes granted (sees nothing).
+const STUDENT_PERM_KEYS = ALL_PERMISSIONS.filter(p => p.category === 'Student Management').map(p => p.key);
+
+// Real class values in use (e.g. "12 S", "10 B", "Nursery") — these are free-text
+// strings entered when a student is added, not a fixed enum, so the class-access
+// checklist must be populated from whatever actually exists, fetched live.
+let ALL_KNOWN_CLASSES = [];
+
+async function refreshKnownClasses() {
+    try {
+        const res = await fetch(`${STUDENT_ADMIN}/classes`, { headers });
+        const data = await res.json();
+        if (data.success) ALL_KNOWN_CLASSES = data.classes;
+    } catch (e) { console.error(e); }
+}
+
+// Renders one collapsible category block in the exact visual format used for
+// permission categories, so class-access reads as "just another category".
+function classAccessCategoryHtml(checkboxClass, selectedClasses = []) {
+    if (ALL_KNOWN_CLASSES.length === 0) {
+        return `
+            <div>
+                <div class="perm-category" onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('span').textContent = this.querySelector('span').textContent === '▼' ? '▶' : '▼';">
+                    🏫 Class Access<span>▶</span>
+                </div>
+                <div class="perm-category-content">
+                    <p style="color:#9ca3af;font-size:0.85rem;margin:0.5rem 0;">No classes exist yet — add a student first.</p>
+                </div>
+            </div>`;
+    }
+    return `
+        <div>
+            <div class="perm-category" onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('span').textContent = this.querySelector('span').textContent === '▼' ? '▶' : '▼';">
+                🏫 Class Access<span>▶</span>
+            </div>
+            <div class="perm-category-content">
+                <p style="color:#b91c1c;font-size:0.8rem;margin:0 0 0.5rem;">⚠️ None checked = NO access to any class. Check every class this admin should manage.</p>
+                ${ALL_KNOWN_CLASSES.map(c => `
+                    <label style="display:flex;align-items:center;gap:0.4rem;padding:0.4rem;background:#f9fafb;border-radius:6px; margin-top: 0.5rem;">
+                        <input type="checkbox" value="${c}" class="${checkboxClass}" ${selectedClasses.includes(c) ? 'checked' : ''}> Class ${c}
+                    </label>
+                `).join('')}
+            </div>
+        </div>`;
+}
 
 const myRole = adminInfo.role || 'admin';
 const myPermissions = adminInfo.permissions || [];
@@ -1338,6 +1788,7 @@ function applyTabPermissions() {
         'gallery': ['gallery.add', 'gallery.edit', 'gallery.delete'],
         'news': ['news.add', 'news.edit', 'news.delete'],
         'documents': ['documents.add', 'documents.delete'],
+        'homepage': ['homepage.edit'],
         'students': ['students.view', 'students.add', 'students.edit', 'students.delete', 'students.export', 'results.manage', 'fees.manage', 'attendance.manage', 'timetable.manage', 'studentdocs.manage'],
         'admins': ['staff.view', 'staff.create', 'staff.edit.profile', 'staff.edit.permissions', 'staff.reset.password', 'staff.delete', 'staff.attendance.approve', 'staff.payroll.manage']
     };
@@ -1353,7 +1804,7 @@ function applyTabPermissions() {
             btn.style.display = hasPermission('audit.view') ? '' : 'none';
             return;
         }
-        if (tab === 'report') {
+        if (tab === 'fees-management') {
             btn.style.display = hasPermission('reports.view') ? '' : 'none';
             return;
         }
@@ -1383,7 +1834,7 @@ function applyStudentSectionPermissions() {
         'documents': ['documents.add', 'documents.delete'],
         'students.list': ['students.view'],
         'students.manage': ['students.view.details', 'results.manage', 'fees.manage', 'attendance.manage', 'studentdocs.manage', 'students.edit', 'timetable.manage', 'students.delete'],
-        'students.bulk': ['attendance.manage', 'fees.manage', 'students.edit'],
+        'students.bulk': ['attendance.manage', 'fees.manage', 'students.edit', 'results.manage', 'studentdocs.manage', 'timetable.manage'],
         'students.timetable': ['timetable.manage']
     };
 
@@ -1423,28 +1874,40 @@ async function loadAdmins() {
         list.innerHTML = data.admins.map(a => `
             <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08); display:flex; flex-direction:column; gap:0.8rem;">
                 <div style="display:flex;justify-content:space-between;align-items:center">
-                    <div>
-                        <h4 style="margin:0; font-size:1.1rem;">${escapeHtml(a.realName || a.username)} <small style="color:#6b7280; font-size:0.85rem;">(${escapeHtml(a.employeeId || 'No ID')})</small> ${a.role==='superadmin' ? '<span style="color:#fbbf24; font-size:0.8rem; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-left:5px;">★ Superadmin</span>' : ''}</h4>
-                        <div style="font-size:0.85rem; color:#4b5563; margin-top:0.3rem;">
-                            <div><strong>Username:</strong> ${escapeHtml(a.username)} | <strong>Email:</strong> ${escapeHtml(a.email)}</div>
-                            <div><strong>Phone:</strong> ${escapeHtml(a.phone || '-')} | <strong>Joined:</strong> ${a.joiningDate ? new Date(a.joiningDate).toLocaleDateString() : '-'}</div>
-                            <div><strong>Qual:</strong> ${escapeHtml(a.qualifications || '-')} | <strong>Salary:</strong> ₹${a.basicSalary || 0}</div>
-                        </div>
-                    </div>
+                    <h4 style="margin:0; font-size:1.1rem; cursor:pointer;" onclick="this.parentElement.nextElementSibling.classList.toggle('active'); this.querySelector('span.chev').textContent = this.querySelector('span.chev').textContent === '▼' ? '▶' : '▼';">
+                        <span class="chev" style="display:inline-block;width:1em;">▶</span>
+                        ${escapeHtml(a.realName || a.username)} <small style="color:#6b7280; font-size:0.85rem;">(${escapeHtml(a.employeeId || 'No ID')})</small> ${a.role==='superadmin' ? '<span style="color:#fbbf24; font-size:0.8rem; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-left:5px;">★ Superadmin</span>' : ''}
+                    </h4>
                     ${a.role !== 'superadmin' ? `
-                        <div>
-                            ${(hasPermission('staff.edit.profile') || hasPermission('staff.edit.permissions') || hasPermission('staff.reset.password')) ? `<button class="action-btn btn-view" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit</button>` : ''}
-                            ${hasPermission('staff.delete') ? `<button class="action-btn btn-delete" onclick="deleteAdmin('${a._id}')">Delete</button>` : ''}
+                        <div style="position:relative;">
+                            <button class="action-btn btn-view" onclick="this.nextElementSibling.classList.toggle('active')" title="Staff actions">⋮</button>
+                            <div class="perm-category-content" style="position:absolute; right:0; top:100%; z-index:10; background:white; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); padding:0.4rem; min-width:180px;" onclick="this.classList.remove('active')">
+                                ${(hasPermission('staff.edit.profile') || hasPermission('staff.edit.permissions') || hasPermission('staff.reset.password')) ? `<button class="action-btn btn-view" style="width:100%;text-align:left;margin-bottom:0.3rem;" onclick='openEditAdminModal(${JSON.stringify(a).replace(/'/g, "&#39;")})'>⚙️ Edit Profile & Permissions</button>` : ''}
+                                ${hasPermission('staff.delete') ? `<button class="action-btn btn-delete" style="width:100%;text-align:left;" onclick="deleteAdmin('${a._id}')">🗑️ Delete</button>` : ''}
+                            </div>
                         </div>
                     ` : ''}
+                </div>
+                <div class="perm-category-content" style="border-left:2px solid #e2e8f0; padding-left:1rem;">
+                    <div style="font-size:0.85rem; color:#4b5563;">
+                        <div><strong>Username:</strong> ${escapeHtml(a.username)} | <strong>Email:</strong> ${escapeHtml(a.email)}</div>
+                        <div><strong>Phone:</strong> ${escapeHtml(a.phone || '-')} | <strong>Joined:</strong> ${a.joiningDate ? new Date(a.joiningDate).toLocaleDateString() : '-'}</div>
+                        <div><strong>Qual:</strong> ${escapeHtml(a.qualifications || '-')} | <strong>Salary:</strong> ₹${a.basicSalary || 0}</div>
+                    </div>
                 </div>
                 ${a.role !== 'superadmin' ? `
                     <div style="border-top: 1px solid #f3f4f6; padding-top:0.5rem;">
                         <span style="font-size:0.85rem; color:#4b5563; font-weight:600;">Permissions:</span>
                         <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:4px;">
-                            ${a.permissions.length 
-                                ? a.permissions.map(p => `<span class="news-category-badge cat-News" style="margin:0; font-size:0.75rem;">${p}</span>`).join('') 
+                            ${a.permissions.length
+                                ? a.permissions.map(p => `<span class="news-category-badge cat-News" style="margin:0; font-size:0.75rem;">${p}</span>`).join('')
                                 : '<span style="color:#9ca3af; font-size:0.85rem; font-style:italic;">No permissions assigned</span>'
+                            }
+                            ${(a.allowedClasses && a.allowedClasses.length)
+                                ? a.allowedClasses.map(c => `<span class="news-category-badge cat-Events" style="margin:0; font-size:0.75rem;">🏫 Class ${c}</span>`).join('')
+                                : (STUDENT_PERM_KEYS.some(p => a.permissions.includes(p))
+                                    ? '<span style="color:#b91c1c; font-size:0.75rem; font-weight:600;">⚠️ No class access granted</span>'
+                                    : '')
                             }
                         </div>
                     </div>
@@ -1487,7 +1950,7 @@ function renderPermCheckboxes() {
                 `).join('')}
             </div>
         </div>
-    `).join('');
+    `).join('') + classAccessCategoryHtml('class-cb');
 }
 
 const adminForm = document.getElementById('adminForm');
@@ -1495,8 +1958,10 @@ if (adminForm) {
     adminForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const permissions = [...document.querySelectorAll('.perm-cb:checked')].map(cb => cb.value);
+        const allowedClasses = [...document.querySelectorAll('.class-cb:checked')].map(cb => cb.value);
         const data = Object.fromEntries(new FormData(adminForm));
         data.permissions = permissions;
+        data.allowedClasses = allowedClasses;
         const msg = document.getElementById('adminMsg');
         try {
             const res = await fetch(`${API_URL}/auth/admins`, { method: 'POST', headers, body: JSON.stringify(data) });
@@ -1504,6 +1969,7 @@ if (adminForm) {
             if (r.success) {
                 msg.innerHTML = '<div style="color:#065f46;background:#d1fae5;padding:0.8rem;border-radius:5px">✅ Sub-admin created!</div>';
                 adminForm.reset();
+                renderPermCheckboxes();
                 loadAdmins();
             } else {
                 msg.innerHTML = `<div style="color:#991b1b;background:#fee2e2;padding:0.8rem;border-radius:5px">❌ ${r.message}</div>`;
@@ -1543,6 +2009,8 @@ function openEditAdminModal(admin) {
     
     const el = document.getElementById('editPermCheckboxes');
     const grouped = ALL_PERMISSIONS.reduce((acc, p) => { acc[p.category] = acc[p.category] || []; acc[p.category].push(p); return acc; }, {});
+    const canEditPerms = hasPermission('staff.edit.permissions');
+    const allowedClasses = admin.allowedClasses || [];
     el.innerHTML = Object.entries(grouped).map(([category, perms]) => `
         <div>
             <div class="perm-category" onclick="this.nextElementSibling.classList.toggle('active'); this.querySelector('span').textContent = this.querySelector('span').textContent === '▼' ? '▶' : '▼';">
@@ -1556,9 +2024,8 @@ function openEditAdminModal(admin) {
                 `).join('')}
             </div>
         </div>
-    `).join('');
-    
-    const canEditPerms = hasPermission('staff.edit.permissions');
+    `).join('') + classAccessCategoryHtml('edit-class-cb', allowedClasses);
+
     el.querySelectorAll('input').forEach(cb => cb.disabled = !canEditPerms);
 
     const pwdInput = document.getElementById('editAdminPassword');
@@ -1581,9 +2048,13 @@ if (editAdminForm) {
         const adminId = document.getElementById('editAdminId').value;
         const newPassword = document.getElementById('editAdminPassword').value.trim();
         const permissions = [...document.querySelectorAll('.edit-perm-cb:checked')].map(cb => cb.value);
-        
+        const allowedClasses = [...document.querySelectorAll('.edit-class-cb:checked')].map(cb => cb.value);
+
         const payload = {};
-        if (hasPermission('staff.edit.permissions')) payload.permissions = permissions;
+        if (hasPermission('staff.edit.permissions')) {
+            payload.permissions = permissions;
+            payload.allowedClasses = allowedClasses;
+        }
         if (hasPermission('staff.edit.profile')) {
             payload.realName = document.getElementById('editAdminRealName').value;
             payload.employeeId = document.getElementById('editAdminEmployeeId').value;
@@ -2357,38 +2828,6 @@ async function loadTodayCollection() {
     } catch (e) { console.error(e); }
 }
 
-let lastReportData = null;
-
-// 👇 ADD THESE HERE
-let allReportPayments = [];
-let reportPayPage = 1;
-const PAY_PER_PAGE = 25;
-
-let allDefaulters = [];
-let defaulterPage = 1;
-const DEF_PER_PAGE = 20;
-
-function getRange() {
-    const range = document.getElementById('reportRange').value;
-    const today = new Date();
-    let from = new Date(), to = new Date();
-    if (range === 'today') { /* from=to=today */ }
-    else if (range === 'week') { from.setDate(today.getDate() - today.getDay()); }
-    else if (range === 'month') { from = new Date(today.getFullYear(), today.getMonth(), 1); }
-    else { // custom
-        from = new Date(document.getElementById('reportFrom').value);
-        to = new Date(document.getElementById('reportTo').value);
-    }
-    return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] };
-}
-
-function onRangeChange() {
-    const custom = document.getElementById('reportRange').value === 'custom';
-    document.getElementById('reportFrom').style.display = custom ? '' : 'none';
-    document.getElementById('reportTo').style.display = custom ? '' : 'none';
-    if (!custom) loadReport();
-}
-
 async function downloadReceipt(receiptNo) {
   try {
     const token = localStorage.getItem('adminToken');
@@ -2410,216 +2849,512 @@ const res = await fetch(`${API_URL}/student-admin/receipt/${encodeURIComponent(r
   }
 }
 
-async function loadReport() {
-    const { from, to } = getRange();
-    if (!from || !to || from === 'Invalid Date') return alert('Select valid dates');
-    try {
-        const res = await fetch(`${STUDENT_ADMIN}/collection-report?from=${from}&to=${to}`, { headers });
-        const data = await res.json();
-        if (!data.success) return;
-        lastReportData = data;
-        // after lastReportData = data; add:
-            allReportPayments = data.payments;
-            reportPayPage = 1;
-            renderReportPayments();
-
-        
-
-        const breakdown = (title, obj) => `
-            <div class="stat-card">
-                <h4 style="color:#2563eb;margin:0 0 0.5rem">${title}</h4>
-                ${Object.keys(obj).length ? Object.entries(obj).map(([k,v]) =>
-                    `<div style="display:flex;justify-content:space-between;padding:0.2rem 0"><span>${escapeHtml(k)}</span><strong>₹${v}</strong></div>`
-                ).join('') : '<small style="color:#9ca3af">No data</small>'}
-            </div>`;
-        document.getElementById('reportBreakdowns').innerHTML =
-            breakdown('By Mode', data.byMode) +
-            breakdown('By Category', data.byCategory) +
-            breakdown('By Staff', data.byStaff);
-
-        document.getElementById('reportPayments').innerHTML = data.payments.length ? data.payments.map(p => `
-            <tr>
-                <td>${new Date(p.date).toLocaleDateString()}</td>
-                <td>${escapeHtml(p.studentName || '-')} <small style="color:#6b7280">(${escapeHtml(p.rollNumber || '')})</small></td>
-                <td>${escapeHtml(p.class || '-')}</td>
-                <td>₹${p.amount}</td>
-                <td>${escapeHtml(p.mode)}</td>
-                <td>${escapeHtml(p.receiptNo)}</td>
-                <td>${escapeHtml(p.collectedBy)}</td>
-            </tr>
-        `).join('') : '<tr><td colspan="7" class="empty-state">No payments in this range</td></tr>';
-    } catch (e) { console.error(e); }
-}
-
-
-
-function renderReportPayments() {
-    const total = allReportPayments.length;
-    const totalPages = Math.ceil(total / PAY_PER_PAGE) || 1;
-    if (reportPayPage > totalPages) reportPayPage = 1;
-    const start = (reportPayPage - 1) * PAY_PER_PAGE;
-    const items = allReportPayments.slice(start, start + PAY_PER_PAGE);
-
-    document.getElementById('reportPayments').innerHTML = items.length ? items.map(p => `
-        <tr>
-            <td>${new Date(p.date).toLocaleDateString()}</td>
-            <td>${escapeHtml(p.studentName || '-')} <small style="color:#6b7280">(${escapeHtml(p.rollNumber || '')})</small></td>
-            <td>${escapeHtml(p.class || '-')}</td>
-            <td>₹${p.amount}</td>
-            <td>${escapeHtml(p.mode)}</td>
-            <td>${escapeHtml(p.receiptNo)}</td>
-            <td>${escapeHtml(p.collectedBy)}</td>
-        </tr>
-    `).join('') : '<tr><td colspan="7" class="empty-state">No payments in this range</td></tr>';
-
-    const pag = document.getElementById('reportPaymentsPagination');
-    if (pag) pag.innerHTML = totalPages > 1 ? `
-        <button class="sd-mini-btn" ${reportPayPage===1?'disabled':''} onclick="changeReportPayPage(-1)">‹ Prev</button>
-        <span style="padding:0.6rem">Page ${reportPayPage} of ${totalPages} (${total} payments)</span>
-        <button class="sd-mini-btn" ${reportPayPage===totalPages?'disabled':''} onclick="changeReportPayPage(1)">Next ›</button>
-    ` : '';
-}
-function changeReportPayPage(dir) { reportPayPage += dir; renderReportPayments(); }
-
-
-async function loadPendingSummary() {
-    try {
-        const res = await fetch(`${STUDENT_ADMIN}/pending-summary`, { headers });
-        const data = await res.json();
-        if (!data.success) return;
-
-        // Full-width pending card (label left, amount right)
-        document.getElementById('pendingSummary').innerHTML = `
-            <div style="background:white;padding:1.3rem 1.6rem;border-radius:10px;
-                        box-shadow:0 2px 10px rgba(0,0,0,0.08);border-left:4px solid #ef4444;
-                        display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
-                <span style="color:#6b7280;font-weight:600;font-size:1.05rem">Total Pending (Overall)</span>
-                <h3 style="color:#ef4444;margin:0;font-size:2.2rem">₹${data.totalPending}</h3>
-            </div>
-        `;
-
-        // Year-wise breakup cards
-        const yr = data.byYear;
-        if (yr) {
-            document.getElementById('pendingByYear').innerHTML = `
-                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #2563eb">
-                    <small style="color:#6b7280">Current FY (${escapeHtml(yr.currentFY)})</small>
-                    <h3 style="margin:0.3rem 0 0;color:#991b1b">₹${yr.current}</h3>
-                </div>
-                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #f59e0b">
-                    <small style="color:#6b7280">Last FY (${escapeHtml(yr.lastFY)})</small>
-                    <h3 style="margin:0.3rem 0 0;color:#991b1b">₹${yr.last}</h3>
-                </div>
-                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #6b7280">
-                    <small style="color:#6b7280">Previous Years (Old)</small>
-                    <h3 style="margin:0.3rem 0 0;color:#991b1b">₹${yr.older}</h3>
-                </div>
-            `;
-        }
-        // Class-wise table
-        const tableHtml = data.byClass.length ? `
-            <table class="data-table">
-                <thead><tr><th>Class</th><th>Pending Amount</th></tr></thead>
-                <tbody>
-                    ${data.byClass.map(c => `
-                        <tr>
-                            <td>Class ${escapeHtml(c.class)}</td>
-                            <td style="color:#991b1b;font-weight:700">₹${c.pending}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>` : '<p style="color:#6b7280;padding:1rem">No pending dues 🎉</p>';
-
-        const wrap = document.getElementById('pendingByClass');
-        if (wrap) wrap.innerHTML = tableHtml;
-    } catch (e) { console.error(e); }
-}
-
-async function loadDefaulterClasses() {
-    try {
-        const res = await fetch(`${STUDENT_ADMIN}/classes`, { headers });
-        const data = await res.json();
-        const sel = document.getElementById('defaulterClass');
-        if (sel) sel.innerHTML = '<option value="">All Classes</option>' + data.classes.map(c => `<option value="${c}">Class ${c}</option>`).join('');
-    } catch (e) { console.error(e); }
-}
-
-
-async function loadDefaulters() {
-    const cls = document.getElementById('defaulterClass')?.value || '';
-    try {
-        const res = await fetch(`${STUDENT_ADMIN}/defaulters${cls ? '?class=' + cls : ''}`, { headers });
-        const data = await res.json();
-        if (!data.success) return;
-        allDefaulters = data.defaulters;
-        defaulterPage = 1;
-        renderDefaulters();
-    } catch (e) { console.error(e); }
-}
-
-function renderDefaulters() {
-    const total = allDefaulters.length;
-    const totalPages = Math.ceil(total / DEF_PER_PAGE) || 1;
-    if (defaulterPage > totalPages) defaulterPage = 1;
-    const start = (defaulterPage - 1) * DEF_PER_PAGE;
-    const pageItems = allDefaulters.slice(start, start + DEF_PER_PAGE);
-
-    document.getElementById('defaultersTable').innerHTML = pageItems.length ? pageItems.map((d, i) => `
-        <tr>
-            <td>${start + i + 1}</td>
-            <td><strong>${escapeHtml(d.name)}</strong> <small style="color:#6b7280">(${escapeHtml(d.rollNumber)})</small></td>
-            <td>${escapeHtml(d.class)} ${escapeHtml(d.section || '')}</td>
-            <td>${escapeHtml(d.parentName || '-')}</td>
-            <td>${escapeHtml(d.phone || '-')}</td>
-            <td style="color:#991b1b;font-weight:700">₹${d.totalPending}</td>
-        </tr>
-    `).join('') : '<tr><td colspan="6" class="empty-state">No defaulters 🎉</td></tr>';
-
-    const pag = document.getElementById('defaultersPagination');
-    if (pag) pag.innerHTML = totalPages > 1 ? `
-        <button class="sd-mini-btn" ${defaulterPage===1?'disabled':''} onclick="changeDefaulterPage(-1)">‹ Prev</button>
-        <span style="padding:0.6rem">Page ${defaulterPage} of ${totalPages} (${total} defaulters)</span>
-        <button class="sd-mini-btn" ${defaulterPage===totalPages?'disabled':''} onclick="changeDefaulterPage(1)">Next ›</button>
-    ` : '';
-}
-
-function changeDefaulterPage(dir) { defaulterPage += dir; renderDefaulters(); }
-
-function exportReport() {
-    if (!lastReportData || !lastReportData.payments.length) return alert('Load a report with data first');
-    const cols = ['Date','Student','Roll','Class','Amount','Mode','Receipt','Collected By'];
-    const rows = lastReportData.payments.map(p => [
-        new Date(p.date).toLocaleDateString(), p.studentName, p.rollNumber, p.class,
-        p.amount, p.mode, p.receiptNo, p.collectedBy
-    ]);
-    let csv = cols.join(',') + '\n';
-    rows.forEach(r => { csv += r.map(f => `"${String(f ?? '').replace(/"/g,'""')}"`).join(',') + '\n'; });
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `collection_report_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-
-
-
-function exportDefaulters() {
-    if (!allDefaulters || allDefaulters.length === 0) return alert('No defaulters to export.');
-    const cols = ['#', 'Student Name', 'Roll Number', 'Class', 'Section', 'Parent Name', 'Phone', 'Total Pending'];
-    const rows = allDefaulters.map((d, i) => [
-        i + 1, d.name, d.rollNumber, d.class, d.section || '', d.parentName || '', d.phone || '', d.totalPending
-    ]);
+function downloadCsv(cols, rows, filenamePrefix) {
     let csv = cols.join(',') + '\n';
     rows.forEach(row => { csv += row.map(f => `"${String(f ?? '').replace(/"/g, '""')}"`).join(',') + '\n'; });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `defaulters_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `${filenamePrefix}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ============ FEES MANAGEMENT (consolidated) ============
+const FM = `${API_URL}/student-admin`;
+let fmInitialized = false;
+let fmCollectionData = null; // cached last-loaded page, reused by exportFmCollection
+
+function showFmSubTab(sectionId, btn) {
+    document.querySelectorAll('.fm-sub-tab-btn').forEach(b => { b.classList.remove('active'); b.style.background = 'transparent'; b.style.color = '#475569'; });
+    if (btn) { btn.classList.add('active'); btn.style.background = '#2563eb'; btn.style.color = 'white'; }
+    ['fm-overview-sec','fm-collection-sec','fm-dcr-sec','fm-defaulters-sec','fm-headwise-sec','fm-discounts-sec','fm-ledger-sec']
+        .forEach(id => document.getElementById(id)?.classList.toggle('hidden', id !== `${sectionId}-sec`));
+
+    if (sectionId === 'fm-overview') loadPendingSummary();
+    if (sectionId === 'fm-collection' && !fmCollectionData) loadFmCollection(1);
+    if (sectionId === 'fm-dcr') { document.getElementById('fmDcrDate').value = document.getElementById('fmDcrDate').value || new Date().toISOString().split('T')[0]; loadFmDcr(); }
+    if (sectionId === 'fm-defaulters') loadFmDefaulters();
+    if (sectionId === 'fm-headwise') loadFmHeadwise();
+    if (sectionId === 'fm-discounts') loadFmDiscounts();
+}
+
+// Populate the class/fee-head/cashier filter dropdowns shared across sub-tabs — once.
+async function initFeesManagement() {
+    if (fmInitialized) return;
+    fmInitialized = true;
+    try {
+        const [classesRes, headsRes, cashiersRes] = await Promise.all([
+            fetch(`${FM}/classes`, { headers }).then(r => r.json()),
+            fetch(`${FM}/fees-management/fee-heads`, { headers }).then(r => r.json()),
+            fetch(`${FM}/fees-management/cashiers`, { headers }).then(r => r.json()),
+        ]);
+        const classOpts = (classesRes.classes || []).map(c => `<option value="${escapeHtml(c)}">Class ${escapeHtml(c)}</option>`).join('');
+        ['fmClass', 'fmDcrClass', 'fmDefaulterClass', 'fmHwClass', 'fmDiscountClass'].forEach(id => {
+            const sel = document.getElementById(id);
+            if (sel) sel.innerHTML = '<option value="">All Classes</option>' + classOpts;
+        });
+        const catOpts = (headsRes.categories || []).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+        ['fmCategory', 'fmDiscountCategory'].forEach(id => {
+            const sel = document.getElementById(id);
+            if (sel) sel.innerHTML = '<option value="">All Fee Heads</option>' + catOpts;
+        });
+        const cashierSel = document.getElementById('fmCashier');
+        if (cashierSel) cashierSel.innerHTML = '<option value="">All Cashiers</option>' + (cashiersRes.cashiers || []).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    } catch (e) { console.error('initFeesManagement failed', e); }
+}
+
+// ---- Overview (pending dues) ----
+async function loadPendingSummary() {
+    try {
+        const res = await fetch(`${FM}/pending-summary`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+
+        document.getElementById('pendingSummary').innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem">
+                <div style="background:white;padding:1.3rem 1.6rem;border-radius:10px;
+                            box-shadow:0 2px 10px rgba(0,0,0,0.08);border-left:4px solid #2563eb;
+                            display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+                    <span style="color:#6b7280;font-weight:600;font-size:1.05rem">Total Fee (Collectable)</span>
+                    <h3 style="color:#2563eb;margin:0;font-size:2.2rem">₹${(data.totalFee ?? 0).toLocaleString('en-IN')}</h3>
+                </div>
+                <div style="background:white;padding:1.3rem 1.6rem;border-radius:10px;
+                            box-shadow:0 2px 10px rgba(0,0,0,0.08);border-left:4px solid #ef4444;
+                            display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem">
+                    <span style="color:#6b7280;font-weight:600;font-size:1.05rem">Total Pending (Overall)</span>
+                    <h3 style="color:#ef4444;margin:0;font-size:2.2rem">₹${data.totalPending.toLocaleString('en-IN')}</h3>
+                </div>
+            </div>
+        `;
+
+        const yr = data.byYear;
+        if (yr) {
+            document.getElementById('pendingByYear').innerHTML = `
+                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #2563eb">
+                    <small style="color:#6b7280">Current FY (${escapeHtml(yr.currentFY)})</small>
+                    <div style="color:#2563eb;font-weight:600;font-size:0.9rem;margin-top:0.3rem">₹${(yr.currentFee ?? 0).toLocaleString('en-IN')} fee</div>
+                    <h3 style="margin:0.1rem 0 0;color:#991b1b">₹${yr.current.toLocaleString('en-IN')} due</h3>
+                </div>
+                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #f59e0b">
+                    <small style="color:#6b7280">Last FY (${escapeHtml(yr.lastFY)})</small>
+                    <div style="color:#2563eb;font-weight:600;font-size:0.9rem;margin-top:0.3rem">₹${(yr.lastFee ?? 0).toLocaleString('en-IN')} fee</div>
+                    <h3 style="margin:0.1rem 0 0;color:#991b1b">₹${yr.last.toLocaleString('en-IN')} due</h3>
+                </div>
+                <div style="background:white;padding:1rem 1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);border-top:3px solid #6b7280">
+                    <small style="color:#6b7280">Previous Years (Old)</small>
+                    <div style="color:#2563eb;font-weight:600;font-size:0.9rem;margin-top:0.3rem">₹${(yr.olderFee ?? 0).toLocaleString('en-IN')} fee</div>
+                    <h3 style="margin:0.1rem 0 0;color:#991b1b">₹${yr.older.toLocaleString('en-IN')} due</h3>
+                </div>
+            `;
+        }
+
+        pendingByClassData = data.byClass || [];
+        const picker = document.getElementById('pendingClassPicker');
+        if (picker) {
+            const prevValue = picker.value;
+            picker.innerHTML = '<option value="">Select a class</option>' +
+                pendingByClassData.map(c => `<option value="${escapeAttr(c.class)}">${escapeHtml(c.class)}</option>`).join('');
+            picker.value = prevValue;
+        }
+        renderPendingByClass();
+    } catch (e) { console.error(e); }
+}
+
+// "Pending by Class" used to render every class's card at once — for a school with
+// many classes this section grew unbounded on the page for no benefit (you almost
+// always care about one class at a time), so it's now a pick-one dropdown instead.
+let pendingByClassData = [];
+function renderPendingByClass() {
+    const el = document.getElementById('pendingByClass');
+    if (!el) return;
+    const selected = document.getElementById('pendingClassPicker')?.value;
+    if (!selected) {
+        el.innerHTML = '<p style="color:#9ca3af">Select a class above to see its total fee and pending dues.</p>';
+        return;
+    }
+    const c = pendingByClassData.find(c => c.class === selected);
+    if (!c) { el.innerHTML = '<p style="color:#9ca3af">No data for this class.</p>'; return; }
+    el.innerHTML = `
+        <div style="background:white;padding:1.1rem 1.4rem;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);max-width:280px">
+            <small style="color:#6b7280">Class ${escapeHtml(c.class)}</small>
+            <div style="color:#2563eb;font-weight:600;font-size:0.95rem;margin-top:0.3rem">₹${c.totalFee.toLocaleString('en-IN')} fee</div>
+            <h4 style="margin:0.2rem 0 0;color:#991b1b">₹${c.pending.toLocaleString('en-IN')} due</h4>
+        </div>
+    `;
+}
+
+// ---- Collection Report ----
+function onFmRangeChange() {
+    const custom = document.getElementById('fmRange').value === 'custom';
+    document.getElementById('fmFrom').style.display = custom ? '' : 'none';
+    document.getElementById('fmTo').style.display = custom ? '' : 'none';
+    if (!custom) loadFmCollection(1);
+}
+
+function getFmRange() {
+    const range = document.getElementById('fmRange').value;
+    const today = new Date();
+    let from = new Date(today), to = new Date(today);
+    if (range === 'week') { from.setDate(today.getDate() - today.getDay()); }
+    else if (range === 'fy') {
+        const y = today.getFullYear();
+        const startYear = today.getMonth() >= 3 ? y : y - 1; // Indian academic year starts ~April
+        from = new Date(startYear, 3, 1);
+    } else if (range === 'custom') {
+        from = new Date(document.getElementById('fmFrom').value);
+        to = new Date(document.getElementById('fmTo').value);
+    }
+    return { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] };
+}
+
+function buildFmCollectionQuery(page) {
+    const { from, to } = getFmRange();
+    const params = new URLSearchParams({ from, to, page: page || 1 });
+    const cls = document.getElementById('fmClass').value; if (cls) params.set('class', cls);
+    const cat = document.getElementById('fmCategory').value; if (cat) params.set('category', cat);
+    const feeType = document.getElementById('fmFeeType').value; if (feeType) params.set('feeType', feeType);
+    const mode = document.getElementById('fmMode').value; if (mode) params.set('mode', mode);
+    const cashier = document.getElementById('fmCashier').value; if (cashier) params.set('collectedBy', cashier);
+    return params;
+}
+
+async function loadFmCollection(page) {
+    const params = buildFmCollectionQuery(page);
+    if (!params.get('from') || !params.get('to') || params.get('from') === 'Invalid Date') return alert('Select valid dates');
+    try {
+        const res = await fetch(`${FM}/fees-management/collection?${params.toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        fmCollectionData = data;
+
+        document.getElementById('fmCollectionSummary').innerHTML = `
+            <div class="stat-card"><h3 style="color:#16a34a">₹${data.total}</h3><p>Total Collected</p></div>
+            <div class="stat-card"><h3 style="color:#2563eb">${data.count}</h3><p>Payments</p></div>
+        `;
+
+        const breakdown = (title, obj) => `
+            <div class="stat-card">
+                <h4 style="color:#2563eb;margin:0 0 0.5rem">${title}</h4>
+                ${Object.keys(obj || {}).length ? Object.entries(obj).map(([k,v]) =>
+                    `<div style="display:flex;justify-content:space-between;padding:0.2rem 0"><span>${escapeHtml(k)}</span><strong>₹${v}</strong></div>`
+                ).join('') : '<small style="color:#9ca3af">No data</small>'}
+            </div>`;
+        document.getElementById('fmCollectionBreakdowns').innerHTML =
+            breakdown('By Mode', data.byMode) + breakdown('By Fee Head', data.byCategory) +
+            breakdown('By Cashier', data.byStaff) + breakdown('By Class', data.byClass);
+
+        document.getElementById('fmCollectionPayments').innerHTML = data.payments.length ? data.payments.map(p => `
+            <tr>
+                <td>${new Date(p.date).toLocaleDateString()}</td>
+                <td>${escapeHtml(p.studentName || '-')} <small style="color:#6b7280">(${escapeHtml(p.rollNumber || '')})</small></td>
+                <td>${escapeHtml(p.class || '-')}</td>
+                <td>${escapeHtml(p.category || '-')}</td>
+                <td>₹${p.amount}</td>
+                <td>${escapeHtml(p.mode)}</td>
+                <td>${escapeHtml(p.receiptNo)}</td>
+                <td>${escapeHtml(p.collectedBy)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="8" class="empty-state">No payments match these filters</td></tr>';
+
+        const pag = document.getElementById('fmCollectionPagination');
+        if (pag) pag.innerHTML = data.pages > 1 ? `
+            <button class="sd-mini-btn" ${data.page===1?'disabled':''} onclick="loadFmCollection(${data.page-1})">‹ Prev</button>
+            <span style="padding:0.6rem">Page ${data.page} of ${data.pages} (${data.count} payments)</span>
+            <button class="sd-mini-btn" ${data.page===data.pages?'disabled':''} onclick="loadFmCollection(${data.page+1})">Next ›</button>
+        ` : '';
+    } catch (e) { console.error(e); }
+}
+
+async function exportFmCollection() {
+    const params = buildFmCollectionQuery(1);
+    params.set('export', '1');
+    try {
+        const res = await fetch(`${FM}/fees-management/collection?${params.toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success || !data.payments.length) return alert('No payments to export for these filters.');
+        const cols = ['Date','Student','Roll','Class','Fee Head','Fee Type','Amount','Mode','Receipt','Collected By'];
+        const rows = data.payments.map(p => [new Date(p.date).toLocaleDateString(), p.studentName, p.rollNumber, p.class, p.category, p.feeType, p.amount, p.mode, p.receiptNo, p.collectedBy]);
+        downloadCsv(cols, rows, 'collection_report');
+    } catch (e) { alert('Export failed: ' + e.message); }
+}
+
+// ---- Daily Collection Report (DCR) ----
+async function loadFmDcr() {
+    const date = document.getElementById('fmDcrDate').value || new Date().toISOString().split('T')[0];
+    const cls = document.getElementById('fmDcrClass').value;
+    const params = new URLSearchParams({ date }); if (cls) params.set('class', cls);
+    try {
+        const res = await fetch(`${FM}/fees-management/dcr?${params.toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        document.getElementById('fmDcrSummary').innerHTML = `
+            <div class="stat-card"><h3 style="color:#16a34a">₹${data.total}</h3><p>Total Collected — ${data.date}</p></div>
+            <div class="stat-card"><h3 style="color:#2563eb">${data.count}</h3><p>Payments</p></div>
+        `;
+        const breakdown = (title, obj) => `
+            <div class="stat-card">
+                <h4 style="color:#2563eb;margin:0 0 0.5rem">${title}</h4>
+                ${Object.keys(obj || {}).length ? Object.entries(obj).map(([k,v]) =>
+                    `<div style="display:flex;justify-content:space-between;padding:0.2rem 0"><span>${escapeHtml(k)}</span><strong>₹${v}</strong></div>`
+                ).join('') : '<small style="color:#9ca3af">No data</small>'}
+            </div>`;
+        document.getElementById('fmDcrBreakdowns').innerHTML = breakdown('By Mode', data.byMode) + breakdown('By Fee Head', data.byCategory) + breakdown('By Cashier', data.byStaff);
+        document.getElementById('fmDcrPayments').innerHTML = data.payments.length ? data.payments.map(p => `
+            <tr>
+                <td>${new Date(p.date).toLocaleTimeString()}</td>
+                <td>${escapeHtml(p.studentName || '-')} <small style="color:#6b7280">(${escapeHtml(p.rollNumber || '')})</small></td>
+                <td>${escapeHtml(p.class || '-')}</td>
+                <td>${escapeHtml(p.category || '-')}</td>
+                <td>₹${p.amount}</td>
+                <td>${escapeHtml(p.mode)}</td>
+                <td>${escapeHtml(p.receiptNo)}</td>
+                <td>${escapeHtml(p.collectedBy)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="8" class="empty-state">No payments collected on this day</td></tr>';
+    } catch (e) { console.error(e); }
+}
+
+async function exportFmDcr() {
+    const date = document.getElementById('fmDcrDate').value || new Date().toISOString().split('T')[0];
+    const cls = document.getElementById('fmDcrClass').value;
+    const params = new URLSearchParams({ date }); if (cls) params.set('class', cls);
+    try {
+        const res = await fetch(`${FM}/fees-management/dcr?${params.toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success || !data.payments.length) return alert('No payments to export for this day.');
+        const cols = ['Time','Student','Roll','Class','Fee Head','Fee Type','Amount','Mode','Receipt','Collected By'];
+        const rows = data.payments.map(p => [new Date(p.date).toLocaleTimeString(), p.studentName, p.rollNumber, p.class, p.category, p.feeType, p.amount, p.mode, p.receiptNo, p.collectedBy]);
+        downloadCsv(cols, rows, `dcr_${data.date}`);
+    } catch (e) { alert('Export failed: ' + e.message); }
+}
+
+// ---- Defaulters ----
+// "All Classes" can return thousands of rows — building/inserting them all into
+// the DOM in one innerHTML write is what was freezing the tab. Data is still
+// fetched once, but only one page's worth is ever rendered at a time.
+const FM_DEFAULTERS_PER_PAGE = 50;
+let fmDefaultersData = [];
+let fmDefaultersLateFeePerDay = null;
+let fmDefaultersPage = 1;
+
+async function loadFmDefaulters() {
+    const cls = document.getElementById('fmDefaulterClass').value;
+    const lateFeePerDay = document.getElementById('fmLateFeePerDay').value;
+    const params = new URLSearchParams(); if (cls) params.set('class', cls); if (lateFeePerDay) params.set('lateFeePerDay', lateFeePerDay);
+    try {
+        const res = await fetch(`${FM}/fees-management/defaulters?${params.toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        fmDefaultersData = data.defaulters || [];
+        fmDefaultersLateFeePerDay = data.lateFeePerDay;
+        fmDefaultersPage = 1;
+        document.getElementById('fmLateFeeHeader').style.display = fmDefaultersLateFeePerDay ? '' : 'none';
+        renderFmDefaultersPage();
+    } catch (e) { console.error(e); }
+}
+
+function renderFmDefaultersPage() {
+    const totalPages = Math.max(1, Math.ceil(fmDefaultersData.length / FM_DEFAULTERS_PER_PAGE));
+    if (fmDefaultersPage > totalPages) fmDefaultersPage = totalPages;
+    const start = (fmDefaultersPage - 1) * FM_DEFAULTERS_PER_PAGE;
+    const pageRows = fmDefaultersData.slice(start, start + FM_DEFAULTERS_PER_PAGE);
+
+    document.getElementById('fmDefaultersTable').innerHTML = pageRows.length ? pageRows.map((d, i) => `
+        <tr>
+            <td>${start + i + 1}</td>
+            <td>${escapeHtml(d.name)}</td>
+            <td>${escapeHtml(d.rollNumber)}</td>
+            <td>${escapeHtml(d.class)}</td>
+            <td>${escapeHtml(d.parentName || '-')}</td>
+            <td>${escapeHtml(d.phone || '-')}</td>
+            <td style="color:#ef4444;font-weight:600">₹${d.totalPending}</td>
+            <td>${d.overdueDays}</td>
+            ${fmDefaultersLateFeePerDay ? `<td>₹${d.estimatedLateFee}</td>` : ''}
+        </tr>
+    `).join('') : `<tr><td colspan="9" class="empty-state">No defaulters 🎉</td></tr>`;
+
+    const pager = document.getElementById('fmDefaultersPager');
+    if (!pager) return;
+    if (fmDefaultersData.length <= FM_DEFAULTERS_PER_PAGE) { pager.innerHTML = ''; return; }
+    pager.innerHTML = `
+        <button class="btn" onclick="changeFmDefaultersPage(-1)" ${fmDefaultersPage === 1 ? 'disabled' : ''} style="padding:0.4rem 1rem">‹ Prev</button>
+        <span style="color:#6b7280">Page ${fmDefaultersPage} of ${totalPages} (${fmDefaultersData.length} defaulters)</span>
+        <button class="btn" onclick="changeFmDefaultersPage(1)" ${fmDefaultersPage === totalPages ? 'disabled' : ''} style="padding:0.4rem 1rem">Next ›</button>
+    `;
+}
+
+function changeFmDefaultersPage(dir) {
+    fmDefaultersPage += dir;
+    renderFmDefaultersPage();
+}
+
+async function exportFmDefaulters() {
+    const cls = document.getElementById('fmDefaulterClass').value;
+    const lateFeePerDay = document.getElementById('fmLateFeePerDay').value;
+    const params = new URLSearchParams(); if (cls) params.set('class', cls); if (lateFeePerDay) params.set('lateFeePerDay', lateFeePerDay);
+    try {
+        const res = await fetch(`${FM}/fees-management/defaulters?${params.toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success || !data.defaulters.length) return alert('No defaulters to export.');
+        const cols = ['#', 'Student Name', 'Roll Number', 'Class', 'Section', 'Parent Name', 'Phone', 'Total Pending', 'Overdue Days'];
+        if (data.lateFeePerDay) cols.push('Est. Late Fee');
+        const rows = data.defaulters.map((d, i) => {
+            const row = [i + 1, d.name, d.rollNumber, d.class, d.section || '', d.parentName || '', d.phone || '', d.totalPending, d.overdueDays];
+            if (data.lateFeePerDay) row.push(d.estimatedLateFee);
+            return row;
+        });
+        downloadCsv(cols, rows, 'defaulters');
+    } catch (e) { alert('Export failed: ' + e.message); }
+}
+
+// ---- Head-wise Revenue ----
+function buildFmHeadwiseQuery() {
+    const params = new URLSearchParams();
+    const cls = document.getElementById('fmHwClass').value; if (cls) params.set('class', cls);
+    const from = document.getElementById('fmHwFrom').value; const to = document.getElementById('fmHwTo').value;
+    if (from && to) { params.set('from', from); params.set('to', to); }
+    return params;
+}
+
+async function loadFmHeadwise() {
+    try {
+        const res = await fetch(`${FM}/fees-management/head-wise?${buildFmHeadwiseQuery().toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        document.getElementById('fmHeadwiseTable').innerHTML = data.rows.length ? data.rows.map(r => `
+            <tr>
+                <td>${escapeHtml(r.category)}</td>
+                <td>₹${r.totalRaised}</td>
+                <td style="color:#16a34a">₹${r.totalDiscount}</td>
+                <td style="color:#2563eb">₹${r.totalCollected}</td>
+                <td style="color:${r.totalPending > 0 ? '#ef4444' : '#16a34a'}">₹${r.totalPending}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="empty-state">No fee records yet</td></tr>';
+    } catch (e) { console.error(e); }
+}
+
+async function exportFmHeadwise() {
+    try {
+        const res = await fetch(`${FM}/fees-management/head-wise?${buildFmHeadwiseQuery().toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success || !data.rows.length) return alert('No data to export.');
+        const cols = ['Fee Head', 'Total Raised', 'Discount', 'Collected', 'Pending'];
+        const rows = data.rows.map(r => [r.category, r.totalRaised, r.totalDiscount, r.totalCollected, r.totalPending]);
+        downloadCsv(cols, rows, 'head_wise_revenue');
+    } catch (e) { alert('Export failed: ' + e.message); }
+}
+
+// ---- Discounts Granted ----
+function buildFmDiscountsQuery() {
+    const params = new URLSearchParams();
+    const cls = document.getElementById('fmDiscountClass').value; if (cls) params.set('class', cls);
+    const cat = document.getElementById('fmDiscountCategory').value; if (cat) params.set('category', cat);
+    return params;
+}
+
+async function loadFmDiscounts() {
+    try {
+        const res = await fetch(`${FM}/fees-management/discounts?${buildFmDiscountsQuery().toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success) return;
+        document.getElementById('fmDiscountsSummary').innerHTML = `
+            <div class="stat-card"><h3 style="color:#16a34a">₹${data.totalDiscount}</h3><p>Total Discount Granted</p></div>
+            <div class="stat-card"><h3 style="color:#2563eb">${data.count}</h3><p>Fee Records with a Discount</p></div>
+        `;
+        document.getElementById('fmDiscountsTable').innerHTML = data.discounts.length ? data.discounts.map(d => `
+            <tr>
+                <td>${escapeHtml(d.studentName || '-')} <small style="color:#6b7280">(${escapeHtml(d.rollNumber || '')})</small></td>
+                <td>${escapeHtml(d.class || '-')}</td>
+                <td>${escapeHtml(d.category)} — ${escapeHtml(d.feeType || '')}</td>
+                <td>${escapeHtml(d.academicYear || '-')}</td>
+                <td>₹${d.amount}</td>
+                <td style="color:#16a34a">₹${d.discount}</td>
+                <td>${escapeHtml(d.discountReason || '-')}</td>
+                <td>${new Date(d.createdAt).toLocaleDateString()}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="8" class="empty-state">No discounts granted yet</td></tr>';
+    } catch (e) { console.error(e); }
+}
+
+async function exportFmDiscounts() {
+    try {
+        const res = await fetch(`${FM}/fees-management/discounts?${buildFmDiscountsQuery().toString()}`, { headers });
+        const data = await res.json();
+        if (!data.success || !data.discounts.length) return alert('No discounts to export.');
+        const cols = ['Student', 'Roll', 'Class', 'Fee Head', 'Fee Type', 'Year', 'Amount', 'Discount', 'Reason', 'Date'];
+        const rows = data.discounts.map(d => [d.studentName, d.rollNumber, d.class, d.category, d.feeType, d.academicYear, d.amount, d.discount, d.discountReason || '', new Date(d.createdAt).toLocaleDateString()]);
+        downloadCsv(cols, rows, 'discounts_granted');
+    } catch (e) { alert('Export failed: ' + e.message); }
+}
+
+// ---- Student Ledger ----
+let fmLedgerSearchTimer = null;
+function searchFmLedgerStudent() {
+    clearTimeout(fmLedgerSearchTimer);
+    const q = document.getElementById('fmLedgerSearch').value.trim();
+    const results = document.getElementById('fmLedgerResults');
+    if (!q) { results.innerHTML = ''; return; }
+    fmLedgerSearchTimer = setTimeout(async () => {
+        try {
+            const res = await fetch(`${FM}/students?search=${encodeURIComponent(q)}&limit=8`, { headers });
+            const data = await res.json();
+            if (!data.success) return;
+            results.innerHTML = (data.students || []).map(s => `
+                <div style="background:white;padding:0.7rem 1rem;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;display:flex;justify-content:space-between"
+                     onclick="loadFmLedger('${s._id}')">
+                    <span>${escapeHtml(s.name)} <small style="color:#6b7280">(${escapeHtml(s.rollNumber)})</small></span>
+                    <small style="color:#6b7280">Class ${escapeHtml(s.class)}</small>
+                </div>
+            `).join('') || '<p style="color:#9ca3af">No students found</p>';
+        } catch (e) { console.error(e); }
+    }, 350);
+}
+
+async function loadFmLedger(studentId) {
+    document.getElementById('fmLedgerResults').innerHTML = '';
+    document.getElementById('fmLedgerSearch').value = '';
+    const detail = document.getElementById('fmLedgerDetail');
+    detail.innerHTML = '<p style="color:#9ca3af">Loading…</p>';
+    try {
+        const res = await fetch(`${FM}/fees-management/ledger/${studentId}`, { headers });
+        const data = await res.json();
+        if (!data.success) { detail.innerHTML = `<p style="color:#ef4444">${escapeHtml(data.message || 'Failed to load ledger')}</p>`; return; }
+        const { student, fees, totals } = data;
+        detail.innerHTML = `
+            <div style="background:white;padding:1.2rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.06);margin-bottom:1rem">
+                <h3 style="margin:0;color:#1e3a8a">${escapeHtml(student.name)} <small style="color:#6b7280">(${escapeHtml(student.rollNumber)}, Class ${escapeHtml(student.class)}${student.section ? ' ' + escapeHtml(student.section) : ''})</small></h3>
+                <div class="stats-grid" style="margin-top:1rem">
+                    <div class="stat-card"><h3>₹${totals.totalAmount}</h3><p>Total Billed</p></div>
+                    <div class="stat-card"><h3 style="color:#16a34a">₹${totals.totalDiscount}</h3><p>Discount</p></div>
+                    <div class="stat-card"><h3 style="color:#2563eb">₹${totals.totalPaid}</h3><p>Paid</p></div>
+                    <div class="stat-card"><h3 style="color:${totals.totalPending > 0 ? '#ef4444' : '#16a34a'}">₹${totals.totalPending}</h3><p>Pending</p></div>
+                </div>
+            </div>
+            ${fees.map(f => {
+                const paid = (f.payments || []).reduce((s, p) => s + p.amount, 0);
+                const net = f.amount - (f.discount || 0);
+                const pending = Math.max(0, net - paid);
+                return `
+                <div style="background:white;padding:1rem;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,0.06);margin-bottom:0.8rem">
+                    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+                        <strong>${escapeHtml(f.category)} — ${escapeHtml(f.feeType)}</strong>
+                        <span style="color:${pending > 0 ? '#ef4444' : '#16a34a'};font-weight:600">${f.status}</span>
+                    </div>
+                    <small style="color:#6b7280">${escapeHtml(f.academicYear)} · Amount ₹${f.amount}${f.discount ? ` · Discount ₹${f.discount}` : ''} · Paid ₹${paid} · Pending ₹${pending}</small>
+                    ${(f.payments || []).length ? `
+                        <table class="data-table" style="margin-top:0.6rem">
+                            <thead><tr><th>Date</th><th>Amount</th><th>Mode</th><th>Receipt</th><th>Collected By</th></tr></thead>
+                            <tbody>
+                                ${f.payments.map(p => `<tr><td>${new Date(p.date).toLocaleDateString()}</td><td>₹${p.amount}</td><td>${escapeHtml(p.mode)}</td><td>${escapeHtml(p.receiptNo)}</td><td>${escapeHtml(p.collectedBy)}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    ` : '<p style="color:#9ca3af;margin:0.5rem 0 0">No payments recorded yet</p>'}
+                </div>`;
+            }).join('') || '<p style="color:#9ca3af">No fees have been assigned to this student yet.</p>'}
+        `;
+    } catch (e) { detail.innerHTML = `<p style="color:#ef4444">Failed to load ledger: ${escapeHtml(e.message)}</p>`; }
 }
 
 
@@ -2980,12 +3715,13 @@ async function loadStaffAttendanceToday() {
             return;
         }
 
-        container.innerHTML = data.staffList.map(s => `
+        container.innerHTML = data.staffList.map((s, i) => `
             <div style="display:flex;flex-direction:column;padding:0.7rem;background:#f9fafb;border-radius:8px;margin-bottom:0.5rem;border:1px solid #e5e7eb;">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">
                     <span style="flex:1; display:flex; align-items:center; gap:0.5rem;">
                         <input type="checkbox" class="staff-roster-cb" value="${s.adminId}" checked style="width:16px;height:16px;accent-color:#2563eb;">
-                        <span><strong>${escapeHtml(s.realName || s.username)}</strong> (${escapeHtml(s.employeeId || '-')})</span>
+                        <span><strong>${i + 1}. ${escapeHtml(s.realName || s.username)}</strong> (${escapeHtml(s.employeeId || '-')})</span>
+                        ${s.approvalStatus === 'Pending' ? '<span style="background:#eef2ff;color:#4338ca;font-size:0.7rem;font-weight:700;padding:2px 6px;border-radius:6px;">⏳ Pending Review</span>' : ''}
                     </span>
                     <div style="display:flex;gap:0.5rem">
                         <select id="satt-status-${s.adminId}" style="padding:0.4rem;border:2px solid #e5e7eb;border-radius:6px">
@@ -3078,7 +3814,27 @@ function renderTeacherCalendar() {
     
     const monthLabel = document.getElementById('teacherCalendarMonth');
     if (monthLabel) monthLabel.innerText = `${monthNames[month]} ${year}`;
-    
+
+    // Sundays are naturally excluded — the mark route already rejects Sunday
+    // submissions, so counting only Approved records (not calendar days) keeps
+    // them out of both sides of the percentage without extra date math.
+    const summaryGrid = document.getElementById('staffAttendanceSummaryGrid');
+    if (summaryGrid) {
+        const monthRecords = teacherAttRecords.filter(r => {
+            const d = new Date(r.date);
+            return d.getFullYear() === year && d.getMonth() === month && r.approvalStatus === 'Approved';
+        });
+        const total = monthRecords.length;
+        const present = monthRecords.filter(r => r.status === 'Present').length;
+        const percentage = total ? Math.round((present / total) * 100) : 0;
+        const cell = (value, label) => `
+            <div style="text-align:center;">
+                <div style="font-size:1.5rem;font-weight:bold;color:#1e3a8a;">${value}</div>
+                <div style="font-size:0.85rem;color:#64748b;">${label}</div>
+            </div>`;
+        summaryGrid.innerHTML = cell(`${percentage}%`, 'Attendance') + cell(present, 'Days Present') + cell(total - present, 'Absent/Leave');
+    }
+
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
@@ -3345,7 +4101,8 @@ window.downloadSalarySlip = async function(id) {
 loadTodayCollection();
 
 // Run on load
-renderPermCheckboxes();
+renderPermCheckboxes(); // immediate paint; class list fills in once fetched below
+refreshKnownClasses().then(renderPermCheckboxes);
 applyStudentSectionPermissions();
 applyStatsPermissions();
 applyTabPermissions();

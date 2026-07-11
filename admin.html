@@ -221,10 +221,11 @@
             <button class="tab-btn" onclick="showTab('gallery', this)">📸 Gallery</button>
             <button class="tab-btn" onclick="showTab('news', this)">📰 News</button>
             <button class="tab-btn" onclick="showTab('documents', this)">📄 Documents</button>
+            <button class="tab-btn" id="homepageTabBtn" onclick="showTab('homepage', this)" style="display:none">🏠 Homepage Content</button>
             <button class="tab-btn" onclick="showTab('students', this)">🎓 Student Directory</button>
             <button class="tab-btn" id="adminsTabBtn" onclick="showTab('admins', this)" style="display:none">👔 Staff Directory</button>
             <button class="tab-btn" id="auditTabBtn" onclick="showTab('audit', this)" style="display:none">🔍 Audit Log</button>
-            <button class="tab-btn" id="reportTabBtn" onclick="showTab('report', this)" style="display:none">📊 Collection Report</button>
+            <button class="tab-btn" id="feesManagementTabBtn" onclick="showTab('fees-management', this)" style="display:none">💰 Fees Management</button>
             <button class="tab-btn" id="teacherWorkspaceTabBtn" onclick="showTab('teacher-workspace', this)" style="display:none">👤 My Workspace</button>
         </div>
         
@@ -388,7 +389,7 @@
                             <input type="text" name="rollNumber" placeholder="Roll Number *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
-                            <input type="text" name="class" placeholder="Class *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                            <input type="text" name="class" placeholder="Class * (e.g. 12 S, 10 B)" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
                             <input type="text" name="section" placeholder="Section" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
                             <input type="text" name="password" placeholder="Password *" required style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
                         </div>
@@ -485,8 +486,11 @@
             <div id="staff-approvals-sec" class="hidden">
                 <div data-perm="staff.attendance.approve" class="stat-card" style="border-top: 4px solid #ef4444; margin-bottom: 2rem;">
                     <h3 style="color:#ef4444; margin-top:0; font-size:1.5rem;">🔔 Pending Attendance Approvals</h3>
-                    <!-- This was already wrapped, but for consistency, I'm ensuring it's correct -->
-                    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <!-- No inner max-height/overflow here on purpose — a fixed-height
+                         scroll box nested inside the page scroll made long lists hard
+                         to scroll (mouse-wheel gets trapped in the small box). Letting
+                         the table grow naturally means the whole page scrolls instead. -->
+                    <div class="table-container">
                         <table class="data-table">
                             <thead><tr><th>Teacher</th><th>Date</th><th>Status</th><th>Time & Remarks</th><th>Actions</th></tr></thead>
                             <tbody id="pendingStaffAttendanceTable"></tbody>
@@ -506,7 +510,9 @@
                             Select/Deselect All
                         </label>
                     </div>
-                    <div id="staffBulkAttRows" style="margin-bottom: 1rem; max-height: 400px; overflow-y: auto;"></div>
+                    <!-- No inner max-height/overflow here on purpose — see the Pending
+                         Approvals comment above; the whole page scrolls instead. -->
+                    <div id="staffBulkAttRows" style="margin-bottom: 1rem;"></div>
                     <button id="saveStaffAttBtn" type="button" class="btn btn-primary" onclick="submitStaffAttendanceBulk()">Save Attendance for Selected</button>
                 </div>
             </div>
@@ -576,71 +582,148 @@
     <div id="auditPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
 </div>
 
-<div id="report-tab" class="hidden">
-    <!-- Date range -->
-    <div class="search-bar">
-        <select id="reportRange" onchange="onRangeChange()">
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="custom">Custom Range</option>
+<!-- FEES MANAGEMENT TAB — consolidated: overview, collection report, DCR,
+     defaulters, head-wise revenue, discounts, student ledger. One permission
+     (reports.view / fees.manage) gates the whole tab; sub-tabs share it. -->
+<div id="fees-management-tab" class="hidden">
+    <div class="tabs" style="background:#f1f5f9;padding:0.5rem;border-radius:12px;margin-bottom:1.5rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button class="fm-sub-tab-btn active" onclick="showFmSubTab('fm-overview', this)" style="padding:0.6rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:#2563eb;color:white;">📊 Overview</button>
+        <button class="fm-sub-tab-btn" onclick="showFmSubTab('fm-collection', this)" style="padding:0.6rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:transparent;color:#475569;">💰 Collection Report</button>
+        <button class="fm-sub-tab-btn" onclick="showFmSubTab('fm-dcr', this)" style="padding:0.6rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:transparent;color:#475569;">📅 Daily Collection (DCR)</button>
+        <button class="fm-sub-tab-btn" onclick="showFmSubTab('fm-defaulters', this)" style="padding:0.6rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:transparent;color:#475569;">⚠️ Defaulters</button>
+        <button class="fm-sub-tab-btn" onclick="showFmSubTab('fm-headwise', this)" style="padding:0.6rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:transparent;color:#475569;">🏷️ Head-wise Revenue</button>
+        <button class="fm-sub-tab-btn" onclick="showFmSubTab('fm-discounts', this)" style="padding:0.6rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:transparent;color:#475569;">🎁 Discounts Granted</button>
+        <button class="fm-sub-tab-btn" onclick="showFmSubTab('fm-ledger', this)" style="padding:0.6rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;background:transparent;color:#475569;">📒 Student Ledger</button>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div id="fm-overview-sec">
+        <h3 style="color:#2563eb;margin-top:0">💸 Outstanding Dues Overview</h3>
+        <div id="pendingSummary" style="margin-bottom:1rem"></div>
+        <div id="pendingByYear" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem"></div>
+        <h4 style="color:#374151;margin-bottom:0.6rem">Pending by Class</h4>
+        <select id="pendingClassPicker" onchange="renderPendingByClass()" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;margin-bottom:1rem">
+            <option value="">Select a class</option>
         </select>
-        <input type="date" id="reportFrom" style="display:none;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-        <input type="date" id="reportTo" style="display:none;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
-        <button class="btn btn-primary" onclick="loadReport()">Load Report</button>
-        <button class="clear-btn" onclick="exportReport()">📥 Export CSV</button>
+        <div id="pendingByClass"></div>
     </div>
 
-    <!-- Summary cards -->
-    <div class="stats-grid" id="reportSummary"></div>
+    <!-- COLLECTION REPORT -->
+    <div id="fm-collection-sec" class="hidden">
+        <div class="search-bar" style="flex-wrap:wrap;gap:0.6rem">
+            <select id="fmRange" onchange="onFmRangeChange()">
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="fy">This Financial Year</option>
+                <option value="custom">Custom Range</option>
+            </select>
+            <input type="date" id="fmFrom" style="display:none;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            <input type="date" id="fmTo" style="display:none;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            <select id="fmClass" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"><option value="">All Classes</option></select>
+            <select id="fmCategory" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"><option value="">All Fee Heads</option></select>
+            <input type="text" id="fmFeeType" placeholder="Fee type contains..." style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            <select id="fmMode" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                <option value="">All Payment Modes</option>
+                <option value="Cash">Cash</option><option value="Online">Online</option>
+                <option value="Cheque">Cheque</option><option value="Bank Transfer">Bank Transfer</option><option value="Other">Other</option>
+            </select>
+            <select id="fmCashier" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"><option value="">All Cashiers</option></select>
+            <button class="btn btn-primary" onclick="loadFmCollection(1)">Load</button>
+            <button class="btn btn-primary" style="background:#16a34a" onclick="exportFmCollection()">📥 Export CSV</button>
+        </div>
 
-    <!-- Breakdowns -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1.5rem" id="reportBreakdowns"></div>
+        <div class="stats-grid" id="fmCollectionSummary" style="margin-top:1rem"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:1.5rem 0" id="fmCollectionBreakdowns"></div>
 
-    <!-- Payments list -->
-    <h3 style="color:#2563eb">Payments in Range</h3>
-    <div class="table-container">
-        <table class="data-table">
-            <thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Amount</th><th>Mode</th><th>Receipt</th><th>By</th></tr></thead>
-            <tbody id="reportPayments"></tbody>
-        </table>
+        <h3 style="color:#2563eb">Payments</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Head</th><th>Amount</th><th>Mode</th><th>Receipt</th><th>Collected By</th></tr></thead>
+                <tbody id="fmCollectionPayments"></tbody>
+            </table>
+        </div>
+        <div id="fmCollectionPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
     </div>
 
-    <div id="reportPaymentsPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
-
-    <!-- Pending + Defaulters -->
-    <h3 style="color:#2563eb;margin-top:2rem">💸 Outstanding Dues</h3>
-
-<!-- Total pending card — full width on top -->
-<div id="pendingSummary" style="margin-bottom:1rem"></div>
-
-<!-- 👇 ADD: year-wise breakup -->
-<div id="pendingByYear" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1rem"></div>
-
-
-<!-- Class-wise table — full width below -->
-<div class="table-container" id="pendingByClass" style="margin-bottom:1.5rem">
-    <!-- Content generated by JS -->
-</div>
-
-<!-- Defaulters class filter -->
-<div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;margin:1rem 0;flex-wrap:wrap">
-    <select id="defaulterClass" onchange="loadDefaulters()" style="padding:0.7rem 1rem;border:2px solid #e5e7eb;border-radius:8px;font-family:inherit;min-width:180px">
-        <option value="">All Classes</option>
-    </select>
-    <div>
-        <button onclick="exportDefaulters()" class="btn btn-primary" style="width:auto;display:inline-block;padding:0.5rem 1rem;font-size:0.85rem">📥 Export</button>
+    <!-- DAILY COLLECTION REPORT -->
+    <div id="fm-dcr-sec" class="hidden">
+        <div class="search-bar">
+            <input type="date" id="fmDcrDate" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+            <select id="fmDcrClass" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"><option value="">All Classes</option></select>
+            <button class="btn btn-primary" onclick="loadFmDcr()">Load DCR</button>
+            <button class="btn btn-primary" style="background:#16a34a" onclick="exportFmDcr()">📥 Export CSV</button>
+        </div>
+        <div class="stats-grid" id="fmDcrSummary" style="margin-top:1rem"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin:1.5rem 0" id="fmDcrBreakdowns"></div>
+        <div class="table-container">
+            <table class="data-table">
+                <thead><tr><th>Time</th><th>Student</th><th>Class</th><th>Head</th><th>Amount</th><th>Mode</th><th>Receipt</th><th>Collected By</th></tr></thead>
+                <tbody id="fmDcrPayments"></tbody>
+            </table>
+        </div>
     </div>
-</div>
-    
 
-    <div class="table-container">
-        <table class="data-table">
-            <thead><tr><th>#</th><th>Student</th><th>Class</th><th>Parent</th><th>Phone</th><th>Pending</th></tr></thead>
-            <tbody id="defaultersTable"></tbody>
-        </table>
+    <!-- DEFAULTERS -->
+    <div id="fm-defaulters-sec" class="hidden">
+        <div class="search-bar">
+            <select id="fmDefaulterClass" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"><option value="">All Classes</option></select>
+            <input type="number" id="fmLateFeePerDay" placeholder="Late fee ₹/day (optional)" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px;width:220px">
+            <button class="btn btn-primary" onclick="loadFmDefaulters()">Load</button>
+            <button class="btn btn-primary" style="background:#16a34a" onclick="exportFmDefaulters()">📥 Export CSV</button>
+        </div>
+        <p style="color:#6b7280;font-size:0.82rem;margin-top:0.5rem">No late-fee rate is stored in the system — enter a ₹/day rate above to get an <em>estimated</em> late fee based on days overdue; leave it blank to see overdue days only.</p>
+        <div class="table-container" style="margin-top:1rem">
+            <table class="data-table">
+                <thead><tr><th>#</th><th>Student</th><th>Roll No</th><th>Class</th><th>Parent</th><th>Phone</th><th>Pending</th><th>Overdue Days</th><th id="fmLateFeeHeader" style="display:none">Est. Late Fee</th></tr></thead>
+                <tbody id="fmDefaultersTable"></tbody>
+            </table>
+        </div>
+        <div id="fmDefaultersPager" style="display:flex;justify-content:center;align-items:center;gap:1rem;margin-top:1rem"></div>
     </div>
-    <div id="defaultersPagination" style="display:flex;gap:0.5rem;justify-content:center;margin-top:1rem"></div>
+
+    <!-- HEAD-WISE REVENUE -->
+    <div id="fm-headwise-sec" class="hidden">
+        <div class="search-bar">
+            <select id="fmHwClass" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"><option value="">All Classes</option></select>
+            <input type="date" id="fmHwFrom" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px" title="Collected-from (optional)">
+            <input type="date" id="fmHwTo" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px" title="Collected-to (optional)">
+            <button class="btn btn-primary" onclick="loadFmHeadwise()">Load</button>
+            <button class="btn btn-primary" style="background:#16a34a" onclick="exportFmHeadwise()">📥 Export CSV</button>
+        </div>
+        <p style="color:#6b7280;font-size:0.82rem;margin-top:0.5rem">"Raised", "Discount" and "Pending" are running totals across all time. "Collected" reflects the date range above if set, otherwise all-time.</p>
+        <div class="table-container" style="margin-top:1rem">
+            <table class="data-table">
+                <thead><tr><th>Fee Head</th><th>Total Raised</th><th>Discount</th><th>Collected</th><th>Pending</th></tr></thead>
+                <tbody id="fmHeadwiseTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- DISCOUNTS GRANTED -->
+    <div id="fm-discounts-sec" class="hidden">
+        <div class="search-bar">
+            <select id="fmDiscountClass" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"><option value="">All Classes</option></select>
+            <select id="fmDiscountCategory" style="padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px"><option value="">All Fee Heads</option></select>
+            <button class="btn btn-primary" onclick="loadFmDiscounts()">Load</button>
+            <button class="btn btn-primary" style="background:#16a34a" onclick="exportFmDiscounts()">📥 Export CSV</button>
+        </div>
+        <div class="stats-grid" id="fmDiscountsSummary" style="margin-top:1rem"></div>
+        <div class="table-container" style="margin-top:1rem">
+            <table class="data-table">
+                <thead><tr><th>Student</th><th>Class</th><th>Fee Head</th><th>Year</th><th>Amount</th><th>Discount</th><th>Reason</th><th>Date</th></tr></thead>
+                <tbody id="fmDiscountsTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- STUDENT LEDGER -->
+    <div id="fm-ledger-sec" class="hidden">
+        <div class="search-bar">
+            <input type="text" id="fmLedgerSearch" placeholder="Search by name or roll number..." oninput="searchFmLedgerStudent()" style="flex:1;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+        </div>
+        <div id="fmLedgerResults" style="margin-top:0.5rem;display:grid;gap:0.4rem"></div>
+        <div id="fmLedgerDetail" style="margin-top:1.5rem"></div>
+    </div>
 </div>
 
         <!-- DOCUMENTS TAB -->
@@ -670,6 +753,105 @@
                 <div id="docMsg" style="margin-top:1rem"></div>
             </div>
             <div id="adminDocList" style="display:grid;gap:1rem"></div>
+        </div>
+
+        <!-- HOMEPAGE CONTENT TAB -->
+        <div id="homepage-tab" class="hidden">
+            <div style="background:white;padding:1.5rem;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,0.08)">
+                <h3 style="margin-top:0;color:#2563eb">🏠 Homepage / App Content</h3>
+                <p style="color:#64748b;margin-top:-0.5rem">Edit the marketing numbers shown on the mobile app &amp; website homepage. Saved here, they update instantly — no app store release needed.</p>
+                <form id="homepageForm" style="display:grid;gap:1rem">
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;cursor:pointer" onclick="toggleHpSection('stats')">
+                            <label style="font-weight:600">🔢 Core Stats <span id="hp-chevron-stats" style="font-size:0.8rem;color:#94a3b8">▸</span></label>
+                        </div>
+                        <div id="hp-content-stats" style="display:none">
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+                                <div>
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Board Result %</label>
+                                    <input type="number" name="boardResultPercent" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                </div>
+                                <div>
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Total Students</label>
+                                    <input type="number" name="studentCount" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                </div>
+                                <div>
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Total Faculty</label>
+                                    <input type="number" name="facultyCount" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                </div>
+                                <div>
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Years of Excellence</label>
+                                    <input type="number" name="yearsOfExcellence" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                </div>
+                                <div>
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Total Seats (Admissions)</label>
+                                    <input type="number" name="seatsTotal" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                </div>
+                                <div>
+                                    <label style="display:block;margin-bottom:0.5rem;font-weight:600">Seats Filled</label>
+                                    <input type="number" name="seatsFilled" style="width:100%;padding:0.7rem;border:2px solid #e5e7eb;border-radius:8px">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;cursor:pointer" onclick="toggleHpSection('trend')">
+                            <label style="font-weight:600">📈 Board Result Trend <span id="hp-chevron-trend" style="font-size:0.8rem;color:#94a3b8">▸</span></label>
+                            <button type="button" onclick="event.stopPropagation();addResultTrendRow()" style="background:#2563eb;color:white;border:none;padding:0.4rem 0.9rem;border-radius:6px;font-size:0.85rem;cursor:pointer">+ Add Year</button>
+                        </div>
+                        <div id="hp-content-trend" style="display:none">
+                            <p style="color:#94a3b8;font-size:0.82rem;margin:0 0 0.5rem">Shown as a line chart on the app home screen. Order here = left-to-right on the chart — use ▲▼ to reorder.</p>
+                            <div id="resultTrendRows" style="display:grid;gap:0.5rem"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;cursor:pointer" onclick="toggleHpSection('toppers')">
+                            <label style="font-weight:600">🏆 Toppers <span id="hp-chevron-toppers" style="font-size:0.8rem;color:#94a3b8">▸</span></label>
+                            <button type="button" onclick="event.stopPropagation();addTopperRow()" style="background:#2563eb;color:white;border:none;padding:0.4rem 0.9rem;border-radius:6px;font-size:0.85rem;cursor:pointer">+ Add Topper</button>
+                        </div>
+                        <div id="hp-content-toppers" style="display:none">
+                            <p style="color:#94a3b8;font-size:0.82rem;margin:0 0 0.5rem">Rank is set automatically by order — use ▲▼ to reorder, no need to renumber manually.</p>
+                            <div id="toppersRows" style="display:grid;gap:0.5rem"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;cursor:pointer" onclick="toggleHpSection('testimonials')">
+                            <label style="font-weight:600">💬 Testimonials <span id="hp-chevron-testimonials" style="font-size:0.8rem;color:#94a3b8">▸</span></label>
+                            <button type="button" onclick="event.stopPropagation();addTestimonialRow()" style="background:#2563eb;color:white;border:none;padding:0.4rem 0.9rem;border-radius:6px;font-size:0.85rem;cursor:pointer">+ Add Testimonial</button>
+                        </div>
+                        <div id="hp-content-testimonials" style="display:none">
+                            <div id="testimonialsRows" style="display:grid;gap:0.5rem"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;cursor:pointer" onclick="toggleHpSection('facilities')">
+                            <label style="font-weight:600">🏫 Facilities <span id="hp-chevron-facilities" style="font-size:0.8rem;color:#94a3b8">▸</span></label>
+                            <button type="button" onclick="event.stopPropagation();addFacilityRow()" style="background:#2563eb;color:white;border:none;padding:0.4rem 0.9rem;border-radius:6px;font-size:0.85rem;cursor:pointer">+ Add Facility</button>
+                        </div>
+                        <div id="hp-content-facilities" style="display:none">
+                            <div id="facilitiesRows" style="display:grid;gap:0.5rem"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;cursor:pointer" onclick="toggleHpSection('awards')">
+                            <label style="font-weight:600">🏅 Awards &amp; Recognitions <span id="hp-chevron-awards" style="font-size:0.8rem;color:#94a3b8">▸</span></label>
+                            <button type="button" onclick="event.stopPropagation();addAwardRow()" style="background:#2563eb;color:white;border:none;padding:0.4rem 0.9rem;border-radius:6px;font-size:0.85rem;cursor:pointer">+ Add Award</button>
+                        </div>
+                        <div id="hp-content-awards" style="display:none">
+                            <p style="color:#94a3b8;font-size:0.82rem;margin:0 0 0.5rem">Trust badges shown near the bottom of the app homepage.</p>
+                            <div id="awardsRows" style="display:grid;gap:0.5rem"></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="justify-self:start">💾 Save Homepage Content</button>
+                </form>
+                <div id="homepageMsg" style="margin-top:1rem"></div>
+            </div>
         </div>
 
         <!-- TEACHER WORKSPACE TAB -->
